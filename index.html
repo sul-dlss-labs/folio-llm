@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Services</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.0/css/bootstrap.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
+ <py-config type="toml">
+  packages = ["pydantic"]
+
+  [[fetch]]
+  from = "src"
+  files = ["airflow.py", "chat.py", "folio.py", "github.py"]
+ </py-config>
+</head>
+<body>
+  <py-script>
+    import airflow
+
+  </py-script>
+  <div class="container-fluid">
+   <h1>FOLIO/Airflow Chat Toolbox</h1>
+    <div class="row">
+      <div class="col-md-3">
+        <div class="btn-group-vertical">
+          <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#chatApiKeyModal">
+            <img src="imgs/ChatGPT.png" alt="ChatGPT Tools"> 
+          ChatGPT</button>
+          <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#folioModal">
+            <img src="imgs/folio.png" alt="FOLIO LSP" style="height: 64px;">
+FOLIO</button>
+          <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#airflowModal">
+            <img src="imgs/Airflow.png" alt="Airflow Tools">
+          Airflow</button>
+          <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#githubApiKeyModal">
+          <img src="imgs/github.png" alt="Github Tools" style="height: 64px;">
+          Github</button>
+        </div>
+      </div>
+      <div class="col-md-9">
+        <!-- Your main content here -->
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Airflow Modal -->
+  <div class="modal fade" id="airflowModal" tabindex="-1" aria-labelledby="airflowModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+         <img src="imgs/Airflow.png" alt="Airflow Logo">
+          <h5 class="modal-title" id="airflowModalLabel">Login to Airflow</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          
+          <form>
+             <div class="mb-3">
+              <label for="airflowURI" class="form-label">Airflow URI</label>
+              <input class="form-control" id="airflowURI">
+            </div>
+           <div class="mb-3">
+              <label for="airflowUser" class="form-label">Username</label>
+              <input class="form-control" id="airflowUser">
+            </div>
+            <div class="mb-3">
+              <label for="airflowPassword" class="form-label">Password</label>
+              <input type="password" class="form-control" id="airflowPassword">
+            </div>
+            <button class="btn btn-primary">Login</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Chat API Key Modal -->
+  <div class="modal fade" id="chatApiKeyModal" tabindex="-1" aria-labelledby="chatApiKeyModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <img src="imgs/ChatGPT.png" alt="ChatGPT Tools"> 
+          <h5 class="modal-title" id="apiKeyModalLabel">Enter your ChatGPT API key</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form>
+            <div class="mb-3">
+              <label for="chatApiKey" class="form-label">API Key</label>
+              <input type="text" class="form-control" id="chatApiKey" placeholder="Enter your secret API key" aria-describedby="apiKeyHelp">
+              <div id="apiKeyHelp" class="form-text">This API key will be used to access restricted resources. Please keep it safe.</div>
+            </div>
+            <button type="submit" class="btn btn-primary">Submit</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOLIO Login Modal -->
+  <div class="modal fade" id="folioModal" tabindex="-1" aria-labelledby="folioModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <img src="imgs/folio.png" alt="FOLIO LSP" style="height: 64px;">
+          <h5 class="modal-title" id="folioModalLabel">Login to FOLIO</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form>
+             <div class="mb-3">
+              <label for="okapiURI" class="form-label">Okapi URI</label>
+              <input class="form-control" id="okapiURI">
+            </div>
+            <div class="mb-3">
+              <label for="folioTenent" class="form-label">Tenent</label>
+              <input class="form-control" id="folioTenent">
+            </div>
+            <div class="mb-3">
+              <label for="folioUser" class="form-label">Username</label>
+              <input class="form-control" id="folioUser">
+            </div>
+            <div class="mb-3">
+              <label for="folioPassword" class="form-label">Password</label>
+              <input type="password" class="form-control" id="folioPassword">
+            </div>
+            <button type="submit" class="btn btn-primary">Login</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Github API Key Modal -->
+  <div class="modal fade" id="githubApiKeyModal" tabindex="-1" aria-labelledby="githubApiKeyModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <img src="imgs/github.png" alt="Github Tools" style="height: 64px;">
+          <h5 class="modal-title" id="apiKeyModalLabel">Enter your Github API key</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form>
+            <div class="mb-3">
+              <label for="githubApiKey" class="form-label">API Key</label>
+              <input type="text" class="form-control" id="githubApiKey" placeholder="Enter your secret API key" aria-describedby="apiKeyHelp">
+              <div id="apiKeyHelp" class="form-text">This API key will be used to access restricted resources. Please keep it safe.</div>
+            </div>
+            <button class="btn btn-primary">Submit</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.0/js/bootstrap.bundle.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+ <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+ </body>
+</html>
