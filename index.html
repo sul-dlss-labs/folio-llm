@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Services</title>
+  <title>FOLIO/Airflow Chat Services</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.0/css/bootstrap.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
  <py-config type="toml">
@@ -11,38 +11,67 @@
   [[fetch]]
   from = "src"
   files = ["airflow.py", "chat.py", "folio.py", "github.py"]
+
+  
  </py-config>
 </head>
 <body>
   <py-script>
-    import airflow
+    from airflow import Airflow
+    from airflow import login as airflow_login
+    from folio import Okapi
+    from folio import login as okapi_login
+    
+    airflow_instance = Airflow()
 
+    okapi = Okapi()
+
+    async def login_airflow():
+        await airflow_login(airflow_instance)
+
+    async def login_okapi():
+        await okapi_login(okapi)
+        
   </py-script>
   <div class="container-fluid">
-   <h1>FOLIO/Airflow Chat Toolbox</h1>
+   <h1>FOLIO/Airflow Chat Tools</h1>
     <div class="row">
       <div class="col-md-3">
         <div class="btn-group-vertical">
           <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#chatApiKeyModal">
             <img src="imgs/ChatGPT.png" alt="ChatGPT Tools"> 
           ChatGPT</button>
-          <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#folioModal">
+          <button type="button" id="folioButton" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#folioModal">
             <img src="imgs/folio.png" alt="FOLIO LSP" style="height: 64px;">
 FOLIO</button>
-          <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#airflowModal">
+          <button type="button" class="btn btn-outline-danger" id="airflowButton" data-bs-toggle="modal" data-bs-target="#airflowModal">
             <img src="imgs/Airflow.png" alt="Airflow Tools">
           Airflow</button>
           <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#githubApiKeyModal">
           <img src="imgs/github.png" alt="Github Tools" style="height: 64px;">
           Github</button>
+          <button type="button" class="btn btn-outline-success">
+          <img src="imgs/python.png" alt="Github Tools" style="height: 64px;">
+          Python</button>
+
         </div>
       </div>
       <div class="col-md-9">
         <!-- Your main content here -->
       </div>
     </div>
+    <div class="row">
+      <div class="col-md-2">
+        <p>Interact Programmatically with Tools through the REPL</p>
+      </div>
+      <div class="col-md-9">
+        <div id="python-wrapper">
+          <py-repl id="chat-repl" auto-generate="true"></py-repl>
+          <div id="py-output"></div>
+       </div>
+      </div>
+    </div>
   </div>
-
 
   <!-- Airflow Modal -->
   <div class="modal fade" id="airflowModal" tabindex="-1" aria-labelledby="airflowModalLabel" aria-hidden="true">
@@ -68,7 +97,10 @@ FOLIO</button>
               <label for="airflowPassword" class="form-label">Password</label>
               <input type="password" class="form-control" id="airflowPassword">
             </div>
-            <button class="btn btn-primary">Login</button>
+            <button type="button" 
+                    data-bs-dismiss="modal" 
+                    class="btn btn-primary" 
+                    py-click="login_airflow()">Login</button>
           </form>
         </div>
       </div>
@@ -76,7 +108,7 @@ FOLIO</button>
   </div>
 
 
-  <!-- Chat API Key Modal -->
+<!-- Chat API Key Modal -->
   <div class="modal fade" id="chatApiKeyModal" tabindex="-1" aria-labelledby="chatApiKeyModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -99,6 +131,7 @@ FOLIO</button>
     </div>
   </div>
 
+
   <!-- FOLIO Login Modal -->
   <div class="modal fade" id="folioModal" tabindex="-1" aria-labelledby="folioModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -108,15 +141,15 @@ FOLIO</button>
           <h5 class="modal-title" id="folioModalLabel">Login to FOLIO</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body" id="folioModalBody">
           <form>
              <div class="mb-3">
               <label for="okapiURI" class="form-label">Okapi URI</label>
               <input class="form-control" id="okapiURI">
             </div>
             <div class="mb-3">
-              <label for="folioTenent" class="form-label">Tenent</label>
-              <input class="form-control" id="folioTenent">
+              <label for="folioTenant" class="form-label">Tenant</label>
+              <input class="form-control" id="folioTenant">
             </div>
             <div class="mb-3">
               <label for="folioUser" class="form-label">Username</label>
@@ -126,7 +159,10 @@ FOLIO</button>
               <label for="folioPassword" class="form-label">Password</label>
               <input type="password" class="form-control" id="folioPassword">
             </div>
-            <button type="submit" class="btn btn-primary">Login</button>
+            <button type="button"
+                    data-bs-dismiss="modal"
+                    class="btn btn-primary"
+                    py-click="login_okapi()">Login</button>
           </form>
         </div>
       </div>
