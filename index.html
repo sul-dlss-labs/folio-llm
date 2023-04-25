@@ -23,7 +23,7 @@
     from airflow import login as airflow_login
     from chat import marc2folio_prompt, lcsh_prompt
     from chat import login as chat_gpt_login
-    from folio import Okapi, load_marc_record
+    from folio import Okapi, load_marc_record, get_instance
     from folio import login as okapi_login
     
     
@@ -69,15 +69,55 @@
                 lcsh_wkflow_div.classList.add("d-none")
 
 
+    async def lcsh_converstation():
+        instance_uuid_elem = document.getElementById("instance-uuid")
+        instance = await get_instance(okapi, instance_uuid_elem.value)
+        raw_instance_elem = document.getElementById("raw-instance")
+        raw_instance_elem.innerHTML = instance
+        instance_subjects = document.getElementById("instance-subjects")
+        h3 = document.createElement("h3")
+        h3.innerHTML = "Instance Subjects"
+        instance_subjects.appendChild(h3)
+        subjects_ul = document.createElement("ul")
+        for subject in instance["subjects"]:
+            li = document.createElement("li")
+            li.innerHTML = subject
+            subjects_ul.appendChild(li)
+        instance_subjects.appendChild(subjects_ul)
+        results_div = document.getElementById("lcsh-result")
+        conversation = await chat_gpt_instance("\n".join(instance["subjects"]))
+        print("Conversation finished")
+        if "error" in conversation:
+            results_div.innerHTML = f"""Error status {conversation["error"]}"""
+        else:
+            print(f"IN SUCCESS {results_div} {conversation}")
+            for choice in conversation.get("choices"):
+                pre_elem = document.createElement("pre")
+                pre_elem.innerHTML = choice["text"]
+                results_div.appendChild(pre_elem)
+        
+ 
+        
+
     async def marc2folio_conversation():
         result_div = document.getElementById("marc2folio-result")
         marc_str = await load_marc_record(marc_file)
+        raw_marc_pre = document.getElementById("raw_marc")
+        raw_marc_pre.innerHTML = marc_str
         prompt_elem = Element("prompt-01")
-        additional_prompt = f"{prompt_elem.value}\n{marc_str}"
+        additional_prompt = prompt_elem.value
+        if marc_str is not None:
+            additional_prompt += f"\n{marc_str}"
         
-        conversation = await chat_gpt_instance(additional_prompt)
+        conversation = await chat_gpt_instance(additional_prompt.strip())
         convo_div = document.createElement("div")
-        convo_div.innerHTML = conversation
+        if "error" in conversation:
+            convo_div.innerHTML = f"Error status {conversation['error']}"
+        else:
+            for choice in conversation.get('choices'):
+                pre_elem = document.createElement("pre")
+                pre_elem.innerHTML = choice['text']
+                convo_div.appendChild(pre_elem)
         result_div.appendChild(convo_div)
         
 
@@ -110,6 +150,8 @@ FOLIO</button>
       </div>
       <div class="col-md-9">
         <h2>Chat GPT</h2>
+        <p>A <a href="https://react-lm.github.io/">ReAct</a> inspired static side toolkit using OpenAI 
+        for <a href="">FOLIO</a> workflows using code from this <a href="https://til.simonwillison.net/llms/python-react-pattern">blog post</a></p>
         <div id="chat-gpt-prompts" class="d-none">
            <h3>Prompts</h3>
            <div class="form-check">
@@ -137,6 +179,7 @@ FOLIO</button>
               <label for="marcFile" class="form-label">MARC21 File</label>
               <input class="form-control" type="file" id="marcFile">
            </div>
+           <pre id="raw_marc"></pre>
            <div>
              <label class="form-label" for="prompt-01">Additional Prompt</label>
              <input class="form-control" type="text" id="prompt-01" placeholder="Additional message">
@@ -147,7 +190,14 @@ FOLIO</button>
         </div>
         <div id="lcsh-workflow" class="d-none">
            <h3>LCSH Workflow</h3>
-           
+           <div>
+             <label class="form-label" for="instance-uuid">Instance UUID</label>
+             <input class="form-control" type="text" id="instance-uuid" placeholder="UUID">
+           </div>
+           <pre id="raw-instance" class="font-monospace"></pre>
+           <div id="instance-subjects"></div>
+           <button type="button" class="btn btn-primary" py-click="lcsh_converstation()">Run</button>
+           <div id="lcsh-result"></div>
         </div>
       </div>
     </div>

@@ -36,18 +36,15 @@ class ChatGPT(object):
 
                     
     async def __call__(self, message):
-        self.messages.append({"role": "user", "content": message})
+        self.messages.append(message)
         result = await self.execute()
-        self.messages.append({"role": "assistant", "content": result})
+        self.messages.append(result)
         return result
 
 
     async def set_system(self, system):
         self.system = system
-        for i,message in enumerate(self.messages):
-            if message["role"] == "system":
-                self.messages.pop(i)
-        self.messages.insert(0, {"role": "system", "content": system})
+        self.messages.insert(0, system)
 
     
     async def execute(self):
@@ -58,14 +55,18 @@ class ChatGPT(object):
                 "model": self.model,
                 "prompt": self.messages,
                 "temperature": 0.9,
-                "max_tokens": 1050,
+                "max_tokens": 250,
                 "stop": [" Human:", " AI:"]
 
             })
         }
         completion = await pyfetch(self.openai_url, **kwargs)
-        result = await completion.json()
-        return completion
+        if completion.ok:
+            result = await completion.json()
+        else:
+            result = { "error": completion.status,
+                       "message": completion.status_text }
+        return result
 
 
 action_re = re.compile(r"^Action: (\w+): (.*)$")
@@ -79,6 +80,13 @@ Use Action to run one of the actions available to you - then return PAUSE.
 Observation will be the result of running those actions.
 
 Your available actions are:
+
+retrieve_instance:
+e.g. folio_instance: 529056f1-d1a2-5dd6-b074-311847ab362a
+
+
+assign_lchs:
+e.g. lcsh: 
 """
 
 marc2folio_prompt = """
@@ -158,8 +166,7 @@ Observation:
 """
 
 lcsh_prompt = f"""
-{prompt_base}
-
+Create Library of Congress Subject Headings (LCSH) for the following subjects:
 
 """
 

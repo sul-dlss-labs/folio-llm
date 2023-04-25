@@ -11,7 +11,7 @@ from js import document, Headers, localStorage
 
 class Okapi(BaseModel):
     url: str = ""
-    tenent: str = ""
+    tenant: str = ""
     token: str = ""
 
 
@@ -40,12 +40,12 @@ async def login(okapi: Okapi):
     password = document.getElementById("folioPassword")
 
     okapi.url = okapi_url.value
-    okapi.tenent = tenant.value
+    okapi.tenant = tenant.value
 
 
     headers = {
         "Content-type": "application/json",
-        "x-okapi-tenant": okapi.tenent
+        "x-okapi-tenant": okapi.tenant
     }
 
     payload = { 
@@ -77,3 +77,19 @@ async def load_marc_record(marc_file):
         marc_reader = pymarc.MARCReader(io.BytesIO(bytes(marc_binary, encoding='utf-8')))
         marc_record = next(marc_reader)
         return str(marc_record)
+
+async def get_instance(okapi, uuid):
+    kwargs = {
+	"headers": {
+            "Content-type": "application/json",
+            "x-okapi-token": okapi.token,
+            "x-okapi-tenant": okapi.tenant
+        }
+    }
+
+    instance_response = await pyfetch(f"{okapi.url}/instance-storage/instances/{uuid}", **kwargs)
+
+    if instance_response.ok:
+        instance = await instance_response.json()
+        return instance
+     
