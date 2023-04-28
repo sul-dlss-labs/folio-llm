@@ -33,6 +33,7 @@ class ChatGPT(object):
         self.system = None 
         self.model = model
         self.messages = []
+        localStorage.setItem("chat_gpt_token", key) 
 
                     
     async def __call__(self, message):
