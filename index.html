@@ -17,7 +17,9 @@
 </head>
 <body>
   <py-script>
-    from js import document, localStorage
+    import asyncio
+
+    from js import console, document, localStorage
 
     from airflow import Airflow
     from airflow import login as airflow_login
@@ -37,6 +39,9 @@
         chatgpt_button = document.getElementById("chatGPTButton")
         chatgpt_button.classList.remove("btn-outline-danger")
         chatgpt_button.classList.add("btn-outline-success")
+        chat_prompts_div = document.getElementById("chat-gpt-prompts")
+        chat_prompts_div.classList.remove("d-none")
+
 
     okapi = Okapi()
 
@@ -50,9 +55,10 @@
         chat_gpt_instance = await chat_gpt_login()
 
     async def login_okapi():
-        await okapi_login(okapi)
+        folio_logged_in = await okapi_login(okapi)
 
     async def display_prompt(prompt_name):
+        chat_gpt_instance.messages = []
         prompt_div = document.getElementById("prompt-text")
         m2f_wkflow_div = document.getElementById("marc2folio-workflow")
         lcsh_wkflow_div = document.getElementById("lcsh-workflow")
@@ -76,7 +82,7 @@
                 lcsh_wkflow_div.classList.add("d-none")
 
 
-    async def lcsh_converstation():
+    async def lcsh_conversation():
         instance_uuid_elem = document.getElementById("instance-uuid")
         instance = await get_instance(okapi, instance_uuid_elem.value)
         raw_instance_elem = document.getElementById("raw-instance")
@@ -106,6 +112,7 @@
         
 
     async def marc2folio_conversation():
+        
         result_div = document.getElementById("marc2folio-result")
         marc_str = await load_marc_record(marc_file)
         raw_marc_pre = document.getElementById("raw_marc")
@@ -133,7 +140,6 @@
             modal_body.innerHTML = "Already logged into ChatGPT"
         
          
-
   </py-script>
   <div class="container-fluid">
    <h1>FOLIO ML Tools</h1>
@@ -173,7 +179,7 @@ FOLIO</button>
              <input class="form-check-input" 
                     type="radio" 
                     name="chatGPTPrompts"
-                    py-click="display_prompt('marc2folio')"
+                    py-click="asyncio.ensure_future(display_prompt('marc2folio'))"
                     id="marc2folio-prompt"></input>
              <label class="form-check-label" for="marc2folio-prompt">MARC-to-FOLIO Instance Prompt</label>
              
@@ -181,7 +187,7 @@ FOLIO</button>
            <div class="form-check">
              <input class="form-check-input" 
                     type="radio" 
-                    py-click="display_prompt('lcsh')"
+                    py-click="asyncio.ensure_future(display_prompt('lcsh'))"
                     name="chatGPTPrompts" 
                     id="lcsh-prompt"></input>
              <label class="form-check-label" for="marc2folio-prompt">Assign LCSH to FOLIO Instances</label>
@@ -199,7 +205,7 @@ FOLIO</button>
              <label class="form-label" for="prompt-01">Additional Prompt</label>
              <input class="form-control" type="text" id="prompt-01" placeholder="Additional message">
            </div>
-           <button type="button" class="btn btn-primary" py-click="marc2folio_conversation()">Run</button>
+           <button type="button" class="btn btn-primary" py-click=""asyncio.ensure_future(marc2folio_conversation())">Run</button>
            <div id="marc2folio-result">
            </div>
         </div>
@@ -211,7 +217,7 @@ FOLIO</button>
            </div>
            <pre id="raw-instance" class="font-monospace"></pre>
            <div id="instance-subjects"></div>
-           <button type="button" class="btn btn-primary" py-click="lcsh_converstation()">Run</button>
+           <button type="button" class="btn btn-primary" py-click=""asyncio.ensure_future(lcsh_conversation())">Run</button>
            <div id="lcsh-result"></div>
         </div>
       </div>
@@ -256,7 +262,7 @@ FOLIO</button>
             <button type="button" 
                     data-bs-dismiss="modal" 
                     class="btn btn-primary" 
-                    py-click="login_airflow()">Login</button>
+                    py-click="asyncio.ensure_future(login_chatgpt())">Login</button>
           </form>
         </div>
       </div>
@@ -282,7 +288,7 @@ FOLIO</button>
             </div>
             <button type="button"
                     data-bs-dismiss="modal"
-                    py-click="login_chatgpt()"
+                    py-click="asyncio.ensure_future(login_chatgpt())"
                     class="btn btn-primary">Submit</button>
           </form>
         </div>
@@ -321,7 +327,7 @@ FOLIO</button>
             <button type="button"
                     data-bs-dismiss="modal"
                     class="btn btn-primary"
-                    py-click="login_okapi()">Login</button>
+                    py-click="asyncio.ensure_future(login_okapi())">Login</button>
           </form>
         </div>
       </div>

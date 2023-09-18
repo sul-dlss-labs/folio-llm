@@ -27,46 +27,43 @@ class ChatGPT(object):
     def __init__(self, key, model="text-davinci-003"):
         self.headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {key}"
+            "Authorization": f"Bearer {key}",
         }
         self.openai_url = "https://api.openai.com/v1/completions"
-        self.system = None 
+        self.system = None
         self.model = model
         self.messages = []
-        localStorage.setItem("chat_gpt_token", key) 
+        localStorage.setItem("chat_gpt_token", key)
 
-                    
     async def __call__(self, message):
         self.messages.append(message)
         result = await self.execute()
         self.messages.append(result)
         return result
 
-
     async def set_system(self, system):
         self.system = system
         self.messages.insert(0, system)
 
-    
     async def execute(self):
         kwargs = {
             "method": "POST",
             "headers": self.headers,
-            "body": json.dumps({
-                "model": self.model,
-                "prompt": self.messages,
-                "temperature": 0.9,
-                "max_tokens": 250,
-                "stop": [" Human:", " AI:"]
-
-            })
+            "body": json.dumps(
+                {
+                    "model": self.model,
+                    "prompt": self.messages,
+                    "temperature": 0.9,
+                    "max_tokens": 250,
+                    "stop": [" Human:", " AI:"],
+                }
+            ),
         }
         completion = await pyfetch(self.openai_url, **kwargs)
         if completion.ok:
             result = await completion.json()
         else:
-            result = { "error": completion.status,
-                       "message": completion.status_text }
+            result = {"error": completion.status, "message": completion.status_text}
         return result
 
 
@@ -189,6 +186,3 @@ Question: Generate a FOLIO Instance record from this MARC record
 =LDR \n=001 
 
 """
-
-
-
