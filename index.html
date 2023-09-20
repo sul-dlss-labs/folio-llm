@@ -99,9 +99,8 @@
         instance_subjects.appendChild(subjects_ul)
         results_div = document.getElementById("lcsh-result")
         conversation = await chat_gpt_instance("\n".join(instance["subjects"]))
-        print("Conversation finished")
         if "error" in conversation:
-            results_div.innerHTML = f"""Error status {conversation["error"]}"""
+            results_div.innerHTML = f"""Error status {conversation["error"]}\n{conversation["message"]}"""
         else:
             for choice in conversation.get("choices"):
                 pre_elem = document.createElement("pre")
@@ -205,7 +204,7 @@ FOLIO</button>
              <label class="form-label" for="prompt-01">Additional Prompt</label>
              <input class="form-control" type="text" id="prompt-01" placeholder="Additional message">
            </div>
-           <button type="button" class="btn btn-primary" py-click=""asyncio.ensure_future(marc2folio_conversation())">Run</button>
+           <button type="button" class="btn btn-primary" py-click="asyncio.ensure_future(marc2folio_conversation())">Run</button>
            <div id="marc2folio-result">
            </div>
         </div>
@@ -217,7 +216,7 @@ FOLIO</button>
            </div>
            <pre id="raw-instance" class="font-monospace"></pre>
            <div id="instance-subjects"></div>
-           <button type="button" class="btn btn-primary" py-click=""asyncio.ensure_future(lcsh_conversation())">Run</button>
+           <button type="button" class="btn btn-primary" py-click="asyncio.ensure_future(lcsh_conversation())">Run</button>
            <div id="lcsh-result"></div>
         </div>
       </div>
