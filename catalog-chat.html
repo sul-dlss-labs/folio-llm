@@ -5,6 +5,19 @@
   <title>FOLIO/Airflow Chat Services</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.0/css/bootstrap.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
+  <style>
+    img.service-btn {
+      height: 24px;
+      width: 24px;
+
+    }
+
+    .tab-pane {
+      border-left: 1px solid rgb(222, 226, 230);
+      border-right: 1px solid rgb(222, 226, 230);
+      border-bottom: 1px solid rgb(222, 226, 230);
+    }
+  </style>
  <py-config type="toml">
   packages = ["pydantic", "./wheels/pymarc-4.2.2-py3-none-any.whl"]
 
@@ -39,8 +52,8 @@
         chatgpt_button = document.getElementById("chatGPTButton")
         chatgpt_button.classList.remove("btn-outline-danger")
         chatgpt_button.classList.add("btn-outline-success")
-        chat_prompts_div = document.getElementById("chat-gpt-prompts")
-        chat_prompts_div.classList.remove("d-none")
+        #chat_prompts_div = document.getElementById("chat-gpt-prompts")
+        #chat_prompts_div.classList.remove("d-none")
 
 
     okapi = Okapi()
@@ -55,31 +68,10 @@
         chat_gpt_instance = await chat_gpt_login()
 
     async def login_okapi():
+        folio_iframe = document.getElementById("folio-system-frame")
+        folio_url_elem = document.getElementById("folioURI")
+        folio_iframe.src = folio_url_elem.value
         folio_logged_in = await okapi_login(okapi)
-
-    async def display_prompt(prompt_name):
-        chat_gpt_instance.messages = []
-        prompt_div = document.getElementById("prompt-text")
-        m2f_wkflow_div = document.getElementById("marc2folio-workflow")
-        lcsh_wkflow_div = document.getElementById("lcsh-workflow")
-    
-        match prompt_name:
-            case "lcsh":
-                prompt_div.innerHTML = lcsh_prompt
-                m2f_wkflow_div.classList.add("d-none")
-                lcsh_wkflow_div.classList.remove("d-none")
-                await chat_gpt_instance.set_system(lcsh_prompt)
-
-            case "marc2folio":
-                prompt_div.innerHTML = marc2folio_prompt
-                m2f_wkflow_div.classList.remove("d-none")
-                lcsh_wkflow_div.classList.add("d-none")
-                await chat_gpt_instance.set_system(marc2folio_prompt)
-
-            case _:
-                prompt_div.innerHTML = "No prompt" 
-                m2f_wkflow_div.classList.add("d-none")
-                lcsh_wkflow_div.classList.add("d-none")
 
 
     async def lcsh_conversation():
@@ -138,90 +130,90 @@
             modal_body = document.getElementById("chatApiKeyModalBody")
             modal_body.innerHTML = "Already logged into ChatGPT"
         
-         
+    def load_sinopia():
+        sinopia_url_select = document.getElementById("sinopiaURI")
+        sinopia_iframe = document.getElementById("sinopia-frame")
+        sinopia_iframe.src = sinopia_url_select.value
+
+    def save_edge_ai():
+        edge_ai_api_url_elem = document.getElementById("edgeAIURI")
+        edge_ai_api_url = edge_ai_api_url_elem.value
+        print(f"Saves Edge AI API URI at {edge_ai_api_url}")
+        
   </py-script>
   <div class="container-fluid">
-   <h1>FOLIO ML Tools</h1>
+   <h1>Chatting with Catalogs</h1>
     <div class="row">
-      <div class="col-md-3">
+      <div class="col-md-1">
         <div class="btn-group-vertical">
           <button type="button" class="btn btn-outline-danger"
                   id="chatGPTButton" 
                   data-bs-toggle="modal"
                   py-click="chatGPTModalContents()"
                   data-bs-target="#chatApiKeyModal">
-            <img src="imgs/ChatGPT.png" alt="ChatGPT Tools"> 
+            <img src="imgs/ChatGPT.png" alt="ChatGPT Tools" class="service-btn"> 
           ChatGPT</button>
-          <button type="button" id="folioButton" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#folioModal">
-            <img src="imgs/folio.png" alt="FOLIO LSP" style="height: 64px;">
-FOLIO</button>
-          <!--
-          <button type="button" class="btn btn-outline-danger" id="airflowButton" data-bs-toggle="modal" data-bs-target="#airflowModal">
-            <img src="imgs/Airflow.png" alt="Airflow Tools">
-          Airflow</button> //-->
+          <button type="button" 
+                  class="btn btn-outline-danger"
+                  id="edgeAIButton"
+                  data-bs-toggle="modal"
+                  data-bs-target="#edgeAIModal">
+            Edge AI
+          </button>
+          <button type="button" 
+                  id="folioButton" 
+                  class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#folioModal">
+            <img src="imgs/folio.png" alt="FOLIO LSP"  class="service-btn">
+            FOLIO
+          </button>
+          <button type="button" class="btn btn-outline-danger" id="sinopiaButton" data-bs-toggle="modal" data-bs-target="#sinopiaModal">
+            <img src="imgs/sinopia.png" alt="Sinopia Linked Data Editor" class="service-btn">
+          Sinopia</button>
           <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#githubApiKeyModal">
-          <img src="imgs/github.png" alt="Github Tools" style="height: 64px;">
+          <img src="imgs/github.png" alt="Github Tools" class="service-btn">
           Github</button>
           <button type="button" class="btn btn-outline-success">
-          <img src="imgs/python.png" alt="Github Tools" style="height: 64px;">
+          <img src="imgs/python.png" alt="Github Tools" class="service-btn">
           Python</button>
 
         </div>
       </div>
-      <div class="col-md-9">
-        <h2>ChatGPT</h2>
-        <p>A <a href="https://react-lm.github.io/">ReAct</a> inspired static side toolkit using OpenAI 
-        for <a href="https://folio.org/">FOLIO</a> workflows using code from this 
-        <a href="https://til.simonwillison.net/llms/python-react-pattern">blog post</a>.</p>
-        <p>See <a href="/catalog-chat.html">Catalog Chat</a> for a demo that embeds FOLIO and <a href="https://sinopia.io">Sinopia</a>
-        into a static site.
-        </p>
-        <div id="chat-gpt-prompts" class="d-none">
-           <h3>Prompts</h3>
-           <div class="form-check">
-             <input class="form-check-input" 
-                    type="radio" 
-                    name="chatGPTPrompts"
-                    py-click="asyncio.ensure_future(display_prompt('marc2folio'))"
-                    id="marc2folio-prompt"></input>
-             <label class="form-check-label" for="marc2folio-prompt">MARC-to-FOLIO Instance Prompt</label>
-             
-           </div>
-           <div class="form-check">
-             <input class="form-check-input" 
-                    type="radio" 
-                    py-click="asyncio.ensure_future(display_prompt('lcsh'))"
-                    name="chatGPTPrompts" 
-                    id="lcsh-prompt"></input>
-             <label class="form-check-label" for="marc2folio-prompt">Assign LCSH to FOLIO Instances</label>
-           </div>
-           <pre id="prompt-text" class="font-monospace"></pre>
-        </div>
-        <div id="marc2folio-workflow" class="d-none">
-           <h3>MARC-to-FOLIO</h3>
-           <div class="mb-3">
-              <label for="marcFile" class="form-label">MARC21 File</label>
-              <input class="form-control" type="file" id="marcFile">
-           </div>
-           <pre id="raw_marc"></pre>
-           <div>
-             <label class="form-label" for="prompt-01">Additional Prompt</label>
-             <input class="form-control" type="text" id="prompt-01" placeholder="Additional message">
-           </div>
-           <button type="button" class="btn btn-primary" py-click="asyncio.ensure_future(marc2folio_conversation())">Run</button>
-           <div id="marc2folio-result">
-           </div>
-        </div>
-        <div id="lcsh-workflow" class="d-none">
-           <h3>LCSH Workflow</h3>
-           <div>
-             <label class="form-label" for="instance-uuid">Instance UUID</label>
-             <input class="form-control" type="text" id="instance-uuid" placeholder="UUID">
-           </div>
-           <pre id="raw-instance" class="font-monospace"></pre>
-           <div id="instance-subjects"></div>
-           <button type="button" class="btn btn-primary" py-click="asyncio.ensure_future(lcsh_conversation())">Run</button>
-           <div id="lcsh-result"></div>
+      
+      <div class="col-md-11">
+
+        <ul class="nav nav-tabs">
+          <li class="nav-item">
+            <a class="nav-link active"
+              id="folio-tab" 
+              data-bs-toggle="tab"
+              data-bs-target="#folio-system"
+              role="tab" 
+              aria-selected="true"
+              aria-controls="folio-system">
+              <img src="imgs/folio.png" alt="FOLIO LSP"  class="service-btn">
+              FOLIO</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link"
+              id="sinopia-tab"
+              data-bs-toggle="tab"
+              data-bs-target="#sinopia"
+              aria-selected="false"
+              aria-controls="sinopia">
+              <img src="imgs/sinopia.png" alt="Sinopia Linked Data Editor" class="service-btn">
+              Sinopia</a>
+              
+          </li>
+        </ul>
+        <div class="tab-content">
+          <div class="tab-pane active" role="tabpanel" id="folio-system" aria-labelledby="folio-tab">
+            <iframe id="folio-system-frame" title="Embedded FOLIO System" src="" width="80%" height="800px">
+            </iframe>
+          </div>
+          <div class="tab-pane" role="tabpanel" id="sinopia" aria-labelledby="sinopia-tab">
+            <iframe id="sinopia-frame" title="Embedded Sinopia System" src="https://stage.sinopia.io/" width="100%" height="800px">
+            </iframe>
+          </div>
         </div>
       </div>
     </div>
@@ -299,6 +291,31 @@ FOLIO</button>
     </div>
   </div>
 
+  <!-- Edge AI Key Modal -->
+  <div class="modal fade" id="edgeAIModal" tabindex="-1" aria-labelledby="edgeAIModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="edgeAIModalLabel">Enter Edge AI API URI</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="edgeAIModalBody">
+          <form>
+            <div class="mb-3">
+              <label for="edgeAIURI" class="form-label">Edge AI API</label>
+              <input type="text" class="form-control" id="edgeAIURI" placeholder="Enter URI to the Edge AI API" aria-describedby="edgeAIapiHelp">
+              <div id="edgeAIapiHelp" class="form-text">This Edge AI API connets to either a local or remote API endpoint.</div>
+            </div>
+            <button type="button"
+                    data-bs-dismiss="modal"
+                    py-click="save_edge_ai()"
+                    class="btn btn-primary">Submit</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
 
   <!-- FOLIO Login Modal -->
   <div class="modal fade" id="folioModal" tabindex="-1" aria-labelledby="folioModalLabel" aria-hidden="true">
@@ -311,6 +328,10 @@ FOLIO</button>
         </div>
         <div class="modal-body" id="folioModalBody">
           <form>
+            <div class="mb-3">
+              <label for="folioURI" class="form-label">FOLIO URI</label>
+              <input class="form-control" id="folioURI">
+            </div>
              <div class="mb-3">
               <label for="okapiURI" class="form-label">Okapi URI</label>
               <input class="form-control" id="okapiURI">
@@ -360,7 +381,35 @@ FOLIO</button>
     </div>
   </div>
 
-
+  <!-- Sinopia Login-->
+  <div class="modal fade" id="sinopiaModal" tabindex="-1" aria-labelledby="sinopiaModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <img src="imgs/sinopia.png" alt="Sinopia Hex Sticker" style="height: 64px;">
+          <h5 class="modal-title" id="sinopiaModalLabel">Enter Sinopia URI</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form>
+            <div class="mb-3">
+              <label for="sinopiaURI" class="form-label">Sinopia URI</label>
+              <select id="sinopiaURI" aria-describedby="sinopiaHelp" class="form-control">
+                <option value="https://development.sinopia.io">Development (https://development.sinopia.io)</option>
+                <option value="https://stage.sinopia.io">Stage (https://stage.sinopia.io)</option>
+                <option value="https://sinopia.io">Production (https://sinopia.io)</option>
+              </select>
+              <div id="sinopiaHelp" class="form-text">Please select development, stage, or production Sinopia environments</div>
+            </div>
+            <button class="btn btn-primary" 
+                    data-bs-dismiss="modal"
+                    type="button"
+                    py-click="load_sinopia()">Submit</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
 
  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.0/js/bootstrap.bundle.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
  <script defer src="https://pyscript.net/latest/pyscript.js"></script>
