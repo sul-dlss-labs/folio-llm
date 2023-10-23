@@ -3,14 +3,46 @@ ChatGPT React-Action
 
 Inspired by this blog post https://til.simonwillison.net/llms/python-react-pattern
 """
+import datetime
 import json
 import re
+import uuid
 
 from typing import Optional
 from js import document, localStorage
 
 from pyodide.http import pyfetch
 
+def add_history(text, type_of):
+    ident = uuid.uuid4()
+    time_stamp = datetime.datetime.utcnow()
+    card = document.createElement("div")
+    card.setAttribute("id", ident)
+    for css_class in ["card", "border-dark", "mb-3"]:
+        card.classList.add(css_class)
+    card_header = document.createElement("div")
+    card_header.classList.add("card-header")
+    card_header.innerHTML = f"Prompt at {time_stamp}"
+    card.appendChild(card_header)
+    card_body = document.createElement("div")
+    card_body.classList.add("card-body")
+    card_body.innerHTML = text
+    card.appendChild(card_body)
+    card_footer = document.createElement("div")
+    card_footer.classList.add("card-footer")
+    footer_text = document.createElement("small")
+    footer_text.innerHTML = f"ID {ident}"
+    card_footer.appendChild(footer_text)
+    card.appendChild(card_footer)
+    if type_of.startswith("prompt"):
+        prompt_history = document.getElementById("prompt-history")
+        if prompt_history.hasChildNodes():
+            prompt_history.insertBefore(card, prompt_history.firstChild)
+        else:
+            prompt_history.appendChild(card)
+    return False
+    
+    
 
 async def login():
     bearer_key_element = document.getElementById("chatApiKey")
@@ -79,6 +111,9 @@ Observation will be the result of running those actions.
 
 Your available actions are:
 
+"""
+
+actions = """
 retrieve_instance:
 e.g. folio_instance: 529056f1-d1a2-5dd6-b074-311847ab362a
 

@@ -28,9 +28,10 @@ def services():
     modal_body.appendChild(folio_services_ol)
 
 
-#    Goal 1: Automate loading of vendor MARC records
+# Goal 1: Automate loading of vendor MARC records
 # Goal 2: Generate Order records from brief MARC records
-# Goal 3: Create Course reserves from a csv containing a faculty id, course name, course code, start date, end date, item barcode  [ Goal 4: Assist staff by generating a quick add instance, holdings, and item from barcode not in FOLIO
+# Goal 3: Create Course reserves from a csv containing a faculty id, course name, course code, start date, end date, item barcode 
+# Goal 4: Assist staff by generating a quick add instance, holdings, and item from barcode not in FOLIO
 # Goal 5: Given a title, find all items with it's circulation status, and reserve the nearest available item
 
 
@@ -95,3 +96,5 @@ async def get_instance(okapi, uuid):
         return instance
     else:
         print(f"ERROR retrieving {uuid} {instance_response}")
+
+
