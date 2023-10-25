@@ -39,28 +39,26 @@
 
     from js import console, document, localStorage
 
-    from airflow import Airflow
     from airflow import login as airflow_login
-    from chat import add_history, prompt_base, marc2folio_prompt, lcsh_prompt
+    from chat import add_history, prompt_base, marc2folio_prompt, lcsh_prompt, update_chat_modal
     from chat import login as chat_gpt_login, ChatGPT
     from folio import Okapi, load_marc_record, get_instance
     from folio import login as okapi_login
     
 
-    
-    airflow_instance = Airflow()
-
     chat_gpt_instance = None
     existing_token = localStorage.getItem("chat_gpt_token")
     if existing_token:
         chat_gpt_instance = ChatGPT(key=existing_token)
+        update_chat_modal(chat_gpt_instance)
         chatgpt_button = document.getElementById("chatGPTButton")
         chatgpt_button.classList.remove("btn-outline-danger")
         chatgpt_button.classList.add("btn-outline-success")
-        
         #chat_prompts_div = document.getElementById("chat-gpt-prompts")
         #chat_prompts_div.classList.remove("d-none")
 
+
+    workflow = None
 
     okapi = Okapi()
 
@@ -130,12 +128,6 @@
                 convo_div.appendChild(pre_elem)
         result_div.appendChild(convo_div)
     
-   
-    async def chatGPTModalContents():
-        if chat_gpt_instance is not None: 
-            modal_body = document.getElementById("chatApiKeyModalBody")
-            modal_body.innerHTML = "Already logged into ChatGPT"
- 
 
     def load_sinopia():
         sinopia_url_select = document.getElementById("sinopiaURI")
@@ -157,9 +149,8 @@
         <div class="btn-group-vertical" role="group">
           <button type="button" class="btn btn-outline-danger"
                   id="chatGPTButton" 
-                   data-bs-toggle="modal"
-                   py-click="chatGPTModalContents()"
-                   data-bs-target="#chatApiKeyModal">
+                  data-bs-toggle="modal"
+                  data-bs-target="#chatApiKeyModal">
              <img src="imgs/ChatGPT.png" alt="ChatGPT Tools" class="service-btn"> 
              ChatGPT
           </button>
@@ -176,7 +167,11 @@
             <img src="imgs/folio.png" alt="FOLIO LSP"  class="service-btn">
             FOLIO
           </button>
-          <button type="button" class="btn btn-outline-danger" id="sinopiaButton" data-bs-toggle="modal" data-bs-target="#sinopiaModal">
+          <button type="button" 
+                  class="btn btn-outline-success" 
+                  id="sinopiaButton" 
+                  data-bs-toggle="modal" 
+                  data-bs-target="#sinopiaModal">
             <img src="imgs/sinopia.png" alt="Sinopia Linked Data Editor" class="service-btn">
             Sinopia
           </button>
@@ -243,12 +238,24 @@
     def clear_chat_prompt():
         main_chat_textarea = document.getElementById("mainChatPrompt")
         main_chat_textarea.value = ""
+        if chat_gpt_instance != None:
+            chat_gpt_instance.messages = []
 
-    def run_prompt():
+async def run_prompt(workflow):
+        if chat_gpt_instance is None:
+            error_toast = document.getElementById("errorToast")
+            error_toast_body = document.getElementById("errorToastBody")
+            error_toast_body.innerHTML = "Log into ChatGPT to enable prompting"
+            asyncio.ensure_future(error_toast.show())
+            return False
         main_chat_textarea = document.getElementById("mainChatPrompt")
+        console.log(f"Workflow is {workflow}")
         current = main_chat_textarea.value
         if len(current) > 0:
             add_history(current, "prompt")
+            chat_result = await asyncio.ensure_future(chat_gpt_instance(current))
+            console.log(chat_result)
+            add_history(chat_result.result(), "response")
             main_chat_textarea.value = ""
  
                  </py-script>
@@ -259,14 +266,14 @@
 		     </div>
 		     <div class="mb-3">
                        <div class="btn-group" id="prompt-btn-group">
-                         <button class="btn btn-warning d-none"
-                                 py-click=""
-                                 id="marc-upload-btn"
-                                 data-bs-toggle="tooltip" 
-                                 data-bs-placement="top"
-                                 data-bs-title="Upload MARC21 File">
-                           <i class="bi bi-cloud-upload-fill"></i>
-                         </button>
+                         <input class="btn btn-warning d-none"
+                                type="file"
+                                py-click=""
+                                id="marc-upload-btn"
+                                data-bs-toggle="tooltip" 
+                                data-bs-placement="top"
+                                data-bs-title="Upload MARC21 File">
+                         </input>
                          <button class="btn btn-info" 
                                  py-click="clear_chat_prompt()"
                                  data-bs-toggle="tooltip" 
@@ -275,7 +282,7 @@
                            <i class="bi bi-wind"></i>
                          </button>
 		         <button class="btn btn-info"
-                                 py-click="run_prompt()"
+                                 py-click="asyncio.ensure_future(run_prompt(workflow))"
                                  data-bs-toggle="tooltip"
                                  data-bs-placement="top"
                                  data-bs-title="Run">
@@ -289,6 +296,7 @@
                  <py-script>
        
     def load_prompt(workflow_slug):
+        global workflow
         workflow_title_h2 = document.getElementById("workflow-title")
         chat_prompt_textarea = document.getElementById("mainChatPrompt")
         folio_vector_chkbx = document.getElementById("folio-vector-db")
@@ -309,18 +317,21 @@
                 msg = "Adds Library of Congress Subject Headings to Resource"
                 console.log(msg)
                 lcsh_vector_chkbox.checked = True
+                workflow = "add_lcsh"
 
             case "bf-to-marc":
                 msg = "Generate a MARC Record from Sinopia BIBFRAME RDF"
                 console.log(msg)
                 lcsh_vector_chkbox.checked = True
                 sinopia_vector_chkbox.checked = True
+                workflow = "bf_to_marc"
 
             case "marc-to-folio":
                 msg = "Upload a MARC Record to create FOLIO Records"
                 console.log(msg)
                 folio_vector_chkbx.checked = True
                 mrc_upload_btn.classList.remove("d-none")
+                workflow = "marc_to_folio"
 
             case "new-resource":
                 msg = "Create a New Resource"
@@ -328,6 +339,10 @@
                 folio_vector_chkbx.checked = True
                 lcsh_vector_chkbox.checked = True
                 sinopia_vector_chkbox.checked = True
+                asyncio.ensure_future(
+                    chat_gpt_instance.set_system("You are an expert cataloger, you return all results as FOLIO JSON record")
+                )
+                workflow = "new_resource"
 
 
             case "transform-bf-folio":
@@ -335,9 +350,11 @@
                 console.log(msg)
                 folio_vector_chkbx.checked = True
                 sinopia_vector_chkbox.checked = True
+                workflow = "transform_bf_folio"
 
             case _:
                 msg = "None selected"
+                workflow = None
 
         workflow_title_h2.innerHTML = f"<strong>Workflow:</strong> {msg}"
 
@@ -587,6 +604,20 @@
     </div>
 
    </div>
+  </div>
+
+  <!-- Error Toast -->
+  <div aria-live="polite" aria-atomic="true" class="d-flex justify-content-center align-items-center w-100">
+    <div id="errorToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="toast-header">
+        <strong class="me-auto">Error Message</strong>
+        <small>11 mins ago</small>
+        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+       </div>
+       <div class="toast-body" id="errorToastBody"></div>
+    </div>
+  </div>
+     
   </div>
  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.0/js/bootstrap.bundle.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
  <script defer src="https://pyscript.net/latest/pyscript.js"></script>

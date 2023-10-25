@@ -9,11 +9,12 @@ import re
 import uuid
 
 from typing import Optional
-from js import document, localStorage
+from js import console, document, localStorage
 
 from pyodide.http import pyfetch
 
-def add_history(text, type_of):
+
+def _add_prompt_to_history(text):
     ident = uuid.uuid4()
     time_stamp = datetime.datetime.utcnow()
     card = document.createElement("div")
@@ -34,15 +35,50 @@ def add_history(text, type_of):
     footer_text.innerHTML = f"ID {ident}"
     card_footer.appendChild(footer_text)
     card.appendChild(card_footer)
-    if type_of.startswith("prompt"):
-        prompt_history = document.getElementById("prompt-history")
-        if prompt_history.hasChildNodes():
-            prompt_history.insertBefore(card, prompt_history.firstChild)
-        else:
-            prompt_history.appendChild(card)
+    prompt_history = document.getElementById("prompt-history")
+    if prompt_history.hasChildNodes():
+        prompt_history.insertBefore(card, prompt_history.firstChild)
+    else:
+        prompt_history.appendChild(card)
     return False
+
+def _add_response_to_history(response):
+    created_at = datetime.datetime.fromtimestamp(response['created'])
+    html_string = f"""<div id="{response['id']}" class="card border-danger mb-3">
+      <div class="card-header">
+        Response at {created_at.isoformat()} 
+      </div>
+      <div class="card-body">"""
+    for choice in response['choices']:
+        html_string += f"<p>Role {choice['role']}</p>"
+        html_string += f"<p>{choice['content']}</p>"
+        
+    html_string += f"""</div>
+      <div class="card-footer">
+        <small>ID {response['id']} Tokens: prompt: {response['usage']['prompt_tokens']} completion: {response['usage']['completion_tokens']}</small>
+      </div>
+    </div>
+    """
+    console.log(html_string)
+    div_wrapper = document.createElement("div")
+    div_wrapper.innerHTML = html_string
+    prompt_history = document.getElementById("prompt-history")
+    if prompt_history.hasChildNodes():
+        prompt_history.insertBefore(div_wrapper, prompt_history.firstChild)
+    else:
+        prompt_history.appendChild(div_wrapper)
+    return False
+
+
+def add_history(value, type_of):
+    match type_of:
+        case "prompt":
+            result = _add_prompt_to_history(value)
+        case "response":
+            console.log("In response", value)
+            result = _add_response_to_history(value)
     
-    
+    return result
 
 async def login():
     bearer_key_element = document.getElementById("chatApiKey")
@@ -52,22 +88,34 @@ async def login():
     chatgpt_button.classList.add("btn-outline-success")
     chat_prompts_div = document.getElementById("chat-gpt-prompts")
     chat_prompts_div.classList.remove("d-none")
+    update_chat_modal(chat_gpt)
     return chat_gpt
 
 
 class ChatGPT(object):
-    def __init__(self, key, model="text-davinci-003"):
+    def __init__(self, 
+        key,
+        endpoint_url="https://api.openai.com/v1/chat/completions", 
+        model="gpt-3.5-turbo",
+        temperature=0.9, 
+        max_tokens=250):
         self.headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {key}",
         }
-        self.openai_url = "https://api.openai.com/v1/completions"
+        self.openai_url = endpoint_url
         self.system = None
         self.model = model
+        self.temperature = temperature
+        self.max_tokens = max_tokens
         self.messages = []
         localStorage.setItem("chat_gpt_token", key)
 
     async def __call__(self, message):
+        message = {
+            "role": "user",
+            "content": message
+        }
         self.messages.append(message)
         result = await self.execute()
         self.messages.append(result)
@@ -75,7 +123,11 @@ class ChatGPT(object):
 
     async def set_system(self, system):
         self.system = system
-        self.messages.insert(0, system)
+        system_message = {
+            "role": "system",
+            "content": self.system
+        }
+        self.messages.insert(0, system_message)
 
     async def execute(self):
         kwargs = {
@@ -84,10 +136,9 @@ class ChatGPT(object):
             "body": json.dumps(
                 {
                     "model": self.model,
-                    "prompt": self.messages,
-                    "temperature": 0.9,
-                    "max_tokens": 250,
-                    "stop": [" Human:", " AI:"],
+                    "messages": self.messages,
+                    "temperature": self.temperature,
+                    "max_tokens": self.max_tokens,
                 }
             ),
         }
@@ -97,6 +148,37 @@ class ChatGPT(object):
         else:
             result = {"error": completion.status, "message": completion.status_text}
         return result
+
+
+def update_chat_modal(chat_gpt_instance):
+    modal_body = document.getElementById("chatApiKeyModalBody")
+    modal_body.innerHTML = ""
+    instance_dl = document.createElement("dl")
+    endpoint_dt = document.createElement("dt")
+    endpoint_dt.innerHTML = "OpenAI Endpoint"
+    instance_dl.appendChild(endpoint_dt)
+    endpoint_dd = document.createElement("dd")
+    endpoint_dd.innerHTML = chat_gpt_instance.openai_url
+    instance_dl.appendChild(endpoint_dd)
+    model_dt = document.createElement("dt")
+    model_dt.innerHTML = "Model"
+    instance_dl.appendChild(model_dt)
+    model_dd = document.createElement("dd")
+    model_dd.innerHTML = chat_gpt_instance.model
+    instance_dl.appendChild(model_dd)
+    temp_dt = document.createElement("dt")
+    temp_dt.innerHTML = "Temperature"
+    instance_dl.appendChild(temp_dt)
+    temp_dd = document.createElement("dd")
+    temp_dd.innerHTML = chat_gpt_instance.temperature
+    instance_dl.appendChild(temp_dd)
+    modal_body.appendChild(instance_dl)
+    max_tokens_dt = document.createElement("dt")
+    max_tokens_dt.innerHTML = "Max Tokens"
+    instance_dl.appendChild(max_tokens_dt)
+    max_tokens_dd = document.createElement("dd")
+    max_tokens_dd.innerHTML = chat_gpt_instance.max_tokens
+    instance_dl.appendChild(max_tokens_dd)
 
 
 action_re = re.compile(r"^Action: (\w+): (.*)$")
