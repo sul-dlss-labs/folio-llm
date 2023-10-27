@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>FOLIO/Airflow Chat Services</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.0/css/bootstrap.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
+ <py-config type="toml">
+  packages = ["pydantic", "./wheels/pymarc-4.2.2-py3-none-any.whl"]
+
+  [[fetch]]
+  from = "src"
+  files = ["airflow.py", "chat.py", "folio.py", "github.py"]
+
+  
+ </py-config>
+</head>
+<body>
+  <py-script>
+    import asyncio
+
+    from js import console, document, localStorage
+
+    from airflow import Airflow
+    from airflow import login as airflow_login
+    from chat import marc2folio_prompt, lcsh_prompt
+    from chat import login as chat_gpt_login, ChatGPT
+    from folio import Okapi, load_marc_record, get_instance
+    from folio import login as okapi_login
+    
+
+    
+    airflow_instance = Airflow()
+
+    chat_gpt_instance = None
+    existing_token = localStorage.getItem("chat_gpt_token")
+    if existing_token:
+        chat_gpt_instance = ChatGPT(key=existing_token)
+        chatgpt_button = document.getElementById("chatGPTButton")
+        chatgpt_button.classList.remove("btn-outline-danger")
+        chatgpt_button.classList.add("btn-outline-success")
+        chat_prompts_div = document.getElementById("chat-gpt-prompts")
+        chat_prompts_div.classList.remove("d-none")
+
+
+    okapi = Okapi()
+
+    marc_file = Element("marcFile")
+
+    async def login_airflow():
+        await airflow_login(airflow_instance)
+
+    async def login_chatgpt():
+        global chat_gpt_instance
+        chat_gpt_instance = await chat_gpt_login()
+
+    async def login_okapi():
+        folio_logged_in = await okapi_login(okapi)
+
+    async def display_prompt(prompt_name):
+        chat_gpt_instance.messages = []
+        prompt_div = document.getElementById("prompt-text")
+        m2f_wkflow_div = document.getElementById("marc2folio-workflow")
+        lcsh_wkflow_div = document.getElementById("lcsh-workflow")
+    
+        match prompt_name:
+            case "lcsh":
+                prompt_div.innerHTML = lcsh_prompt
+                m2f_wkflow_div.classList.add("d-none")
+                lcsh_wkflow_div.classList.remove("d-none")
+                await chat_gpt_instance.set_system(lcsh_prompt)
+
+            case "marc2folio":
+                prompt_div.innerHTML = marc2folio_prompt
+                m2f_wkflow_div.classList.remove("d-none")
+                lcsh_wkflow_div.classList.add("d-none")
+                await chat_gpt_instance.set_system(marc2folio_prompt)
+
+            case _:
+                prompt_div.innerHTML = "No prompt" 
+                m2f_wkflow_div.classList.add("d-none")
+                lcsh_wkflow_div.classList.add("d-none")
+
+
+    async def lcsh_conversation():
+        instance_uuid_elem = document.getElementById("instance-uuid")
+        instance = await get_instance(okapi, instance_uuid_elem.value)
+        raw_instance_elem = document.getElementById("raw-instance")
+        raw_instance_elem.innerHTML = instance
+        instance_subjects = document.getElementById("instance-subjects")
+        h3 = document.createElement("h3")
+        h3.innerHTML = "Instance Subjects"
+        instance_subjects.appendChild(h3)
+        subjects_ul = document.createElement("ul")
+        for subject in instance["subjects"]:
+            li = document.createElement("li")
+            li.innerHTML = subject
+            subjects_ul.appendChild(li)
+        instance_subjects.appendChild(subjects_ul)
+        results_div = document.getElementById("lcsh-result")
+        conversation = await chat_gpt_instance("\n".join(instance["subjects"]))
+        if "error" in conversation:
+            results_div.innerHTML = f"""Error status {conversation["error"]}\n{conversation["message"]}"""
+        else:
+            for choice in conversation.get("choices"):
+                pre_elem = document.createElement("pre")
+                pre_elem.innerHTML = choice["text"]
+                results_div.appendChild(pre_elem)
+        
+ 
+        
+
+    async def marc2folio_conversation():
+        
+        result_div = document.getElementById("marc2folio-result")
+        marc_str = await load_marc_record(marc_file)
+        raw_marc_pre = document.getElementById("raw_marc")
+        raw_marc_pre.innerHTML = marc_str
+        prompt_elem = Element("prompt-01")
+        additional_prompt = prompt_elem.value
+        if marc_str is not None:
+            additional_prompt += f"\n{marc_str}"
+        
+        conversation = await chat_gpt_instance(additional_prompt.strip())
+        convo_div = document.createElement("div")
+        if "error" in conversation:
+            convo_div.innerHTML = f"Error status {conversation['error']}"
+        else:
+            for choice in conversation.get('choices'):
+                pre_elem = document.createElement("pre")
+                pre_elem.innerHTML = choice['text']
+                convo_div.appendChild(pre_elem)
+        result_div.appendChild(convo_div)
+    
+   
+    async def chatGPTModalContents():
+        if chat_gpt_instance is not None: 
+            modal_body = document.getElementById("chatApiKeyModalBody")
+            modal_body.innerHTML = "Already logged into ChatGPT"
+        
+         
+  </py-script>
+  <div class="container-fluid">
+   <h1>FOLIO ML Tools</h1>
+    <div class="row">
+      <div class="col-md-3">
+        <div class="btn-group-vertical">
+          <button type="button" class="btn btn-outline-danger"
+                  id="chatGPTButton" 
+                  data-bs-toggle="modal"
+                  py-click="chatGPTModalContents()"
+                  data-bs-target="#chatApiKeyModal">
+            <img src="imgs/ChatGPT.png" alt="ChatGPT Tools"> 
+          ChatGPT</button>
+          <button type="button" id="folioButton" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#folioModal">
+            <img src="imgs/folio.png" alt="FOLIO LSP" style="height: 64px;">
+FOLIO</button>
+          <!--
+          <button type="button" class="btn btn-outline-danger" id="airflowButton" data-bs-toggle="modal" data-bs-target="#airflowModal">
+            <img src="imgs/Airflow.png" alt="Airflow Tools">
+          Airflow</button> //-->
+          <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#githubApiKeyModal">
+          <img src="imgs/github.png" alt="Github Tools" style="height: 64px;">
+          Github</button>
+          <button type="button" class="btn btn-outline-success">
+          <img src="imgs/python.png" alt="Github Tools" style="height: 64px;">
+          Python</button>
+
+        </div>
+      </div>
+      <div class="col-md-9">
+        <h2>ChatGPT</h2>
+        <p>A <a href="https://react-lm.github.io/">ReAct</a> inspired static side toolkit using OpenAI 
+        for <a href="https://folio.org/">FOLIO</a> workflows using code from this 
+        <a href="https://til.simonwillison.net/llms/python-react-pattern">blog post</a>.</p>
+        <p>See <a href="/catalog-chat.html">Catalog Chat</a> for a demo embedding FOLIO and <a href="https://sinopia.io">Sinopia</a>
+        into a static site.
+        </p>
+        <div id="chat-gpt-prompts" class="d-none">
+           <h3>Prompts</h3>
+           <div class="form-check">
+             <input class="form-check-input" 
+                    type="radio" 
+                    name="chatGPTPrompts"
+                    py-click="asyncio.ensure_future(display_prompt('marc2folio'))"
+                    id="marc2folio-prompt"></input>
+             <label class="form-check-label" for="marc2folio-prompt">MARC-to-FOLIO Instance Prompt</label>
+             
+           </div>
+           <div class="form-check">
+             <input class="form-check-input" 
+                    type="radio" 
+                    py-click="asyncio.ensure_future(display_prompt('lcsh'))"
+                    name="chatGPTPrompts" 
+                    id="lcsh-prompt"></input>
+             <label class="form-check-label" for="marc2folio-prompt">Assign LCSH to FOLIO Instances</label>
+           </div>
+           <pre id="prompt-text" class="font-monospace"></pre>
+        </div>
+        <div id="marc2folio-workflow" class="d-none">
+           <h3>MARC-to-FOLIO</h3>
+           <div class="mb-3">
+              <label for="marcFile" class="form-label">MARC21 File</label>
+              <input class="form-control" type="file" id="marcFile">
+           </div>
+           <pre id="raw_marc"></pre>
+           <div>
+             <label class="form-label" for="prompt-01">Additional Prompt</label>
+             <input class="form-control" type="text" id="prompt-01" placeholder="Additional message">
+           </div>
+           <button type="button" class="btn btn-primary" py-click="asyncio.ensure_future(marc2folio_conversation())">Run</button>
+           <div id="marc2folio-result">
+           </div>
+        </div>
+        <div id="lcsh-workflow" class="d-none">
+           <h3>LCSH Workflow</h3>
+           <div>
+             <label class="form-label" for="instance-uuid">Instance UUID</label>
+             <input class="form-control" type="text" id="instance-uuid" placeholder="UUID">
+           </div>
+           <pre id="raw-instance" class="font-monospace"></pre>
+           <div id="instance-subjects"></div>
+           <button type="button" class="btn btn-primary" py-click="asyncio.ensure_future(lcsh_conversation())">Run</button>
+           <div id="lcsh-result"></div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-2">
+        <p>Interact Programmatically with Tools through the REPL</p>
+      </div>
+      <div class="col-md-9">
+        <div id="python-wrapper">
+          <py-repl id="chat-repl" auto-generate="true"></py-repl>
+          <div id="py-output"></div>
+       </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Airflow Modal -->
+  <div class="modal fade" id="airflowModal" tabindex="-1" aria-labelledby="airflowModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+         <img src="imgs/Airflow.png" alt="Airflow Logo">
+          <h5 class="modal-title" id="airflowModalLabel">Login to Airflow</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          
+          <form>
+             <div class="mb-3">
+              <label for="airflowURI" class="form-label">Airflow URI</label>
+              <input class="form-control" id="airflowURI">
+            </div>
+           <div class="mb-3">
+              <label for="airflowUser" class="form-label">Username</label>
+              <input class="form-control" id="airflowUser">
+            </div>
+            <div class="mb-3">
+              <label for="airflowPassword" class="form-label">Password</label>
+              <input type="password" class="form-control" id="airflowPassword">
+            </div>
+            <button type="button" 
+                    data-bs-dismiss="modal" 
+                    class="btn btn-primary" 
+                    py-click="asyncio.ensure_future(login_chatgpt())">Login</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+<!-- Chat API Key Modal -->
+  <div class="modal fade" id="chatApiKeyModal" tabindex="-1" aria-labelledby="chatApiKeyModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <img src="imgs/ChatGPT.png" alt="ChatGPT Tools"> 
+          <h5 class="modal-title" id="apiKeyModalLabel">Enter your ChatGPT API key</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="chatApiKeyModalBody">
+          <form>
+            <div class="mb-3">
+              <label for="chatApiKey" class="form-label">API Key</label>
+              <input type="text" class="form-control" id="chatApiKey" placeholder="Enter your secret API key" aria-describedby="apiKeyHelp">
+              <div id="apiKeyHelp" class="form-text">This API key will be used to access restricted resources. Please keep it safe.</div>
+            </div>
+            <button type="button"
+                    data-bs-dismiss="modal"
+                    py-click="asyncio.ensure_future(login_chatgpt())"
+                    class="btn btn-primary">Submit</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- FOLIO Login Modal -->
+  <div class="modal fade" id="folioModal" tabindex="-1" aria-labelledby="folioModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <img src="imgs/folio.png" alt="FOLIO LSP" style="height: 64px;">
+          <h5 class="modal-title" id="folioModalLabel">Login to FOLIO</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="folioModalBody">
+          <form>
+             <div class="mb-3">
+              <label for="okapiURI" class="form-label">Okapi URI</label>
+              <input class="form-control" id="okapiURI">
+            </div>
+            <div class="mb-3">
+              <label for="folioTenant" class="form-label">Tenant</label>
+              <input class="form-control" id="folioTenant">
+            </div>
+            <div class="mb-3">
+              <label for="folioUser" class="form-label">Username</label>
+              <input class="form-control" id="folioUser">
+            </div>
+            <div class="mb-3">
+              <label for="folioPassword" class="form-label">Password</label>
+              <input type="password" class="form-control" id="folioPassword">
+            </div>
+            <button type="button"
+                    data-bs-dismiss="modal"
+                    class="btn btn-primary"
+                    py-click="asyncio.ensure_future(login_okapi())">Login</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Github API Key Modal -->
+  <div class="modal fade" id="githubApiKeyModal" tabindex="-1" aria-labelledby="githubApiKeyModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <img src="imgs/github.png" alt="Github Tools" style="height: 64px;">
+          <h5 class="modal-title" id="apiKeyModalLabel">Enter your Github API key</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form>
+            <div class="mb-3">
+              <label for="githubApiKey" class="form-label">API Key</label>
+              <input type="text" class="form-control" id="githubApiKey" placeholder="Enter your secret API key" aria-describedby="apiKeyHelp">
+              <div id="apiKeyHelp" class="form-text">This API key will be used to access restricted resources. Please keep it safe.</div>
+            </div>
+            <button class="btn btn-primary">Submit</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.0/js/bootstrap.bundle.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+ <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+ </body>
+</html>

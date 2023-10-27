@@ -43,15 +43,18 @@ def _add_prompt_to_history(text):
     return False
 
 def _add_response_to_history(response):
+    console.log(f"Start response history {response.keys()}")
     created_at = datetime.datetime.fromtimestamp(response['created'])
     html_string = f"""<div id="{response['id']}" class="card border-danger mb-3">
       <div class="card-header">
         Response at {created_at.isoformat()} 
       </div>
       <div class="card-body">"""
+    console.log(f"HTML string {response['choices']}")
     for choice in response['choices']:
-        html_string += f"<p>Role {choice['role']}</p>"
-        html_string += f"<p>{choice['content']}</p>"
+        message = choice.get('message')
+        html_string += f"<p>Role {message['role']}</p>"
+        html_string += f"<p>{message['content']}</p>"
         
     html_string += f"""</div>
       <div class="card-footer">
@@ -62,7 +65,7 @@ def _add_response_to_history(response):
     console.log(html_string)
     div_wrapper = document.createElement("div")
     div_wrapper.innerHTML = html_string
-    prompt_history = document.getElementById("prompt-history")
+    prompt_history = document.getElementById("response-history")
     if prompt_history.hasChildNodes():
         prompt_history.insertBefore(div_wrapper, prompt_history.firstChild)
     else:
@@ -75,7 +78,6 @@ def add_history(value, type_of):
         case "prompt":
             result = _add_prompt_to_history(value)
         case "response":
-            console.log("In response", value)
             result = _add_response_to_history(value)
     
     return result
