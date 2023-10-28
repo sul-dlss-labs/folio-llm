@@ -42,6 +42,7 @@ def _add_prompt_to_history(text):
         prompt_history.appendChild(card)
     return False
 
+
 def _add_response_to_history(response):
     console.log(f"Start response history {response.keys()}")
     created_at = datetime.datetime.fromtimestamp(response['created'])
@@ -82,6 +83,7 @@ def add_history(value, type_of):
     
     return result
 
+
 async def login():
     bearer_key_element = document.getElementById("chatApiKey")
     chat_gpt = ChatGPT(key=bearer_key_element.value)
@@ -120,7 +122,7 @@ class ChatGPT(object):
         }
         self.messages.append(message)
         result = await self.execute()
-        self.messages.append(result)
+        self.messages.append(result["choices"][0]["message"]["content"])
         return result
 
     async def set_system(self, system):
@@ -151,6 +153,31 @@ class ChatGPT(object):
             result = {"error": completion.status, "message": completion.status_text}
         return result
 
+
+async def react_loop(**kwargs):
+    workflow_actions = kwargs.get("actions", {})
+    max_turns = kwargs.get("max_turns", 5)
+    next_prompt = kwargs.get("question")
+    prompt = kwargs.get("prompt")
+    bot = kwags.get("chat_instance")
+    if question is None or prompt is None:
+        raise ValueError("Question and prompt cannot be None")
+    while i < max_turns:
+        i += 1
+        result = bot(next_prompt)
+        add_history(result, "response")
+        actions = [action_re.match(a) for a in result["choices"][0]["message"]["content"].split("\n") if action_re.match(a)]
+        if actions:
+            action, action_input = actions[0].groups()
+            if action not in workflow_actions:
+                raise Exception(f"Unknown action: {action} with input {action_input}")
+            add_history(f"Running {action} on {action_input}", "prompt")
+            observation = workflow_actions[action](action_input)
+            next_prompt = f"Observation: {observation}"
+            add_history(next_prompt, "prompt")
+        else:
+            return
+        
 
 def update_chat_modal(chat_gpt_instance):
     modal_body = document.getElementById("chatApiKeyModalBody")

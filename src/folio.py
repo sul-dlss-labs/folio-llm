@@ -59,7 +59,6 @@ async def login(okapi: Okapi):
     login_json = await login_response.json()
     okapi.token = login_json["okapiToken"]
 
-
     if login_response.ok:
         folio_button = document.getElementById("folioButton")
         folio_button.classList.remove("btn-outline-danger")
@@ -97,4 +96,8 @@ async def get_instance(okapi, uuid):
     else:
         print(f"ERROR retrieving {uuid} {instance_response}")
 
+async def add(record):
+    return "Added record with uuid of {uuid}"
 
+async def load(record):
+    return "Loading record to FOLIO"
