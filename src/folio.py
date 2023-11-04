@@ -7,7 +7,7 @@ from typing import Optional
 from pydantic import BaseModel
 from pyodide.http import pyfetch
 
-from js import document, Headers, localStorage
+from js import document, Headers, localStorage, alert
 
 
 class Okapi(BaseModel):
@@ -97,6 +97,7 @@ async def get_instance(okapi, uuid):
         print(f"ERROR retrieving {uuid} {instance_response}")
 
 async def add(record):
+    alert(f"Record {record} added to FOLIO")
     return "Added record with uuid of {uuid}"
 
 async def load(record):

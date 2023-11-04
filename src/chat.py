@@ -3,6 +3,7 @@ ChatGPT React-Action
 
 Inspired by this blog post https://til.simonwillison.net/llms/python-react-pattern
 """
+import asyncio
 import datetime
 import json
 import re
@@ -35,23 +36,27 @@ def _add_prompt_to_history(text):
     footer_text.innerHTML = f"ID {ident}"
     card_footer.appendChild(footer_text)
     card.appendChild(card_footer)
-    prompt_history = document.getElementById("prompt-history")
+    row_div = document.createElement("div")
+    row_div.classList.add("row")
+    div_wrapper = document.createElement("div")
+    div_wrapper.classList.add("col-md-10")
+    div_wrapper.appendChild(card)
+    row_div.appendChild(div_wrapper)
+    prompt_history = document.getElementById("chat-history")
     if prompt_history.hasChildNodes():
-        prompt_history.insertBefore(card, prompt_history.firstChild)
+        prompt_history.insertBefore(row_div, prompt_history.firstChild)
     else:
-        prompt_history.appendChild(card)
+        prompt_history.appendChild(row_div)
     return False
 
 
 def _add_response_to_history(response):
-    console.log(f"Start response history {response.keys()}")
     created_at = datetime.datetime.fromtimestamp(response['created'])
     html_string = f"""<div id="{response['id']}" class="card border-danger mb-3">
       <div class="card-header">
         Response at {created_at.isoformat()} 
       </div>
       <div class="card-body">"""
-    console.log(f"HTML string {response['choices']}")
     for choice in response['choices']:
         message = choice.get('message')
         html_string += f"<p>Role {message['role']}</p>"
@@ -63,14 +68,18 @@ def _add_response_to_history(response):
       </div>
     </div>
     """
-    console.log(html_string)
+    row_div = document.createElement("div")
+    row_div.classList.add("row")
     div_wrapper = document.createElement("div")
+    for class_ in ["col-md-10", "offset-md-1"]:
+        div_wrapper.classList.add(class_)
     div_wrapper.innerHTML = html_string
-    prompt_history = document.getElementById("response-history")
+    row_div.appendChild(div_wrapper)
+    prompt_history = document.getElementById("chat-history")
     if prompt_history.hasChildNodes():
-        prompt_history.insertBefore(div_wrapper, prompt_history.firstChild)
+        prompt_history.insertBefore(row_div, prompt_history.firstChild)
     else:
-        prompt_history.appendChild(div_wrapper)
+        prompt_history.appendChild(row_div)
     return False
 
 
@@ -122,7 +131,8 @@ class ChatGPT(object):
         }
         self.messages.append(message)
         result = await self.execute()
-        self.messages.append(result["choices"][0]["message"]["content"])
+        console.log(f"Adding {result} to messages")
+        self.messages.append(result["choices"][0]["message"])
         return result
 
     async def set_system(self, system):
@@ -131,6 +141,11 @@ class ChatGPT(object):
             "role": "system",
             "content": self.system
         }
+        # Remove any existing system messages
+        console.log("Before removing any old messages")
+        for i,message in enumerate(self.messages):
+            if message['role'] == "system":
+                self.messages.pop(i)
         self.messages.insert(0, system_message)
 
     async def execute(self):
@@ -155,18 +170,22 @@ class ChatGPT(object):
 
 
 async def react_loop(**kwargs):
+    console.log("In react Loop")
     workflow_actions = kwargs.get("actions", {})
     max_turns = kwargs.get("max_turns", 5)
     next_prompt = kwargs.get("question")
-    prompt = kwargs.get("prompt")
-    bot = kwags.get("chat_instance")
-    if question is None or prompt is None:
-        raise ValueError("Question and prompt cannot be None")
+    bot = kwargs.get("chat_instance")
+    if next_prompt is None:
+        raise ValueError("Question cannot be None")
+    i = 0
+    console.log(f"Before while loop i={i} max-turns = {max_turns}")
     while i < max_turns:
         i += 1
-        result = bot(next_prompt)
+        console.log(f"Loop {i} {next_prompt}")
+        result = await bot(next_prompt)
         add_history(result, "response")
         actions = [action_re.match(a) for a in result["choices"][0]["message"]["content"].split("\n") if action_re.match(a)]
+        console.log(f"Actions Regex {actions}")
         if actions:
             action, action_input = actions[0].groups()
             if action not in workflow_actions:
