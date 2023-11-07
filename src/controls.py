@@ -1,7 +1,7 @@
 from js import console, document, alert
 
 from chat import add_history
-from workflows import NewResource
+from workflows import NewResource, MARC21toFOLIO
 
 
 def clear_chat_prompt(chat_gpt_instance):
@@ -16,6 +16,24 @@ def clear_chat_prompt(chat_gpt_instance):
     _clear_vector_db()
     return None
 
+
+def load_folio_default():
+    folio_modal = document.getElementById("folioModal")
+    folio_url = document.getElementById("folioURI")
+    okapi_url = document.getElementById("okapiURI")
+    tenant = document.getElementById("folioTenant")
+    user = document.getElementById("folioUser")
+    password = document.getElementById("folioPassword")
+    folio_default = document.getElementById("folio-default")
+
+    folio_url.value = "https://folio-nolana.dev.folio.org"
+    okapi_url.value = "https://folio-nolana-okapi.dev.folio.org"
+    tenant.value = "diku"
+    user.value = "diku_admin"
+    password.value = "admin"
+
+    folio_default.classList.add("d-none")
+    
 
 
 def load_workflow(workflow_slug):
@@ -53,18 +71,18 @@ def load_workflow(workflow_slug):
             workflow = "bf_to_marc"
 
         case "marc-to-folio":
-            msg = "Upload a MARC Record to create FOLIO Records"
             console.log(msg)
             folio_vector_chkbx.checked = True
             mrc_upload_btn.classList.remove("d-none")
-            workflow = "marc_to_folio"
+            workflow = MARC21toFOLIO
+            msg = workflow.name
 
         case "new-resource":
             folio_vector_chkbx.checked = True
             lcsh_vector_chkbox.checked = True
             sinopia_vector_chkbox.checked = True
             workflow = NewResource
-            msg = NewResource.name
+            msg = workflow.name
 
 
         case "transform-bf-folio":
@@ -105,15 +123,16 @@ async def run_prompt(workflow, chat_gpt_instance):
             examples.append(check_box.nextElementSibling.value)
     console.log(f"Examples {examples}")
     workflow.examples = examples
-    console.log("Before init workflow")
     workflow_run = workflow(react=True)
-    console.log("New workflow instance")
     await chat_gpt_instance.set_system(workflow_run.system)
     current = main_chat_textarea.value
     if len(current) > 0:
-        add_history(current, "prompt")
-        chat_result = await chat_gpt_instance(current)
-        add_history(chat_result, "response")
+        console.log(f"Before calling {workflow_run.run}")
+        #add_history(current, "prompt")
+        #chat_result = await chat_gpt_instance(current)
+        #add_history(chat_result, "response")
+        run_result = await workflow_run.run(chat_gpt_instance, current)
+        console.log(f"Run result {run_result}")
         main_chat_textarea.value = ""
 
 def _clear_vector_db():

@@ -7,7 +7,7 @@ from typing import Optional
 from pydantic import BaseModel
 from pyodide.http import pyfetch
 
-from js import document, Headers, localStorage, alert
+from js import console, document, Headers, localStorage, alert
 
 
 class Okapi(BaseModel):
@@ -20,12 +20,12 @@ def services():
     modal_body = document.getElementById("folioModalBody")
     modal_body.innerHTML = ""
     modal_label = document.getElementById("folioModalLabel")
-    modal_label.innerHTML = "FOLIO Services"
-    folio_services_ol = document.createElement("ol")
-    auto_vendor_marc_li = document.createElement("li")
-    auto_vendor_marc_li.innerHTML = "Load Vendor MARC Records"
-    folio_services_ol.appendChild(auto_vendor_marc_li)
-    modal_body.appendChild(folio_services_ol)
+    modal_label.innerHTML = "FOLIO Status"
+    # folio_services_ol = document.createElement("ol")
+    # auto_vendor_marc_li = document.createElement("li")
+    # auto_vendor_marc_li.innerHTML = "Load Vendor MARC Records"
+    # folio_services_ol.appendChild(auto_vendor_marc_li)
+    modal_body.innerHTML = "Logged into FOLIO"
 
 
 # Goal 1: Automate loading of vendor MARC records
@@ -38,11 +38,14 @@ def services():
 async def login(okapi: Okapi):
     okapi_url = document.getElementById("okapiURI")
     tenant = document.getElementById("folioTenant")
+    
     user = document.getElementById("folioUser")
     password = document.getElementById("folioPassword")
 
+
     okapi.url = okapi_url.value
     okapi.tenant = tenant.value
+
 
     headers = {"Content-type": "application/json", "x-okapi-tenant": okapi.tenant}
 
@@ -54,15 +57,22 @@ async def login(okapi: Okapi):
         "mode": "cors",
         "body": json.dumps(payload),
     }
+
     login_response = await pyfetch(f"{okapi.url}/authn/login", **kwargs)
 
     login_json = await login_response.json()
+
     okapi.token = login_json["okapiToken"]
+
 
     if login_response.ok:
         folio_button = document.getElementById("folioButton")
         folio_button.classList.remove("btn-outline-danger")
         folio_button.classList.add("btn-outline-success")
+        localStorage.setItem("okapi_headers", 
+                             json.dumps({ "Content-type": "application/json",
+                                          "x-okapi-token": okapi.tenant,
+                                          "x-okapi-tenant": okapi.token }))
         services()
 
 
