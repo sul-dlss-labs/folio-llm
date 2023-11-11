@@ -15,6 +15,22 @@ class Okapi(BaseModel):
     tenant: str = ""
     token: str = ""
 
+    def headers(self):
+        return {
+            "Content-type": "application/json",
+            "x-okapi-token": self.token,
+            "x-okapi-tenant": self.tenant,
+        }
+
+
+def _get_okapi():
+    existing_okapi = localStorage.getItem("okapi")
+    if existing_okapi is None:
+        alert("Missing Okapi")
+        return None
+
+    return Okapi.parse_obj(json.loads(existing_okapi))
+
 
 def services():
     modal_body = document.getElementById("folioModalBody")
@@ -46,6 +62,7 @@ async def login(okapi: Okapi):
     okapi.url = okapi_url.value
     okapi.tenant = tenant.value
 
+    console.log("Before setting headers or payload")
 
     headers = {"Content-type": "application/json", "x-okapi-tenant": okapi.tenant}
 
@@ -58,6 +75,8 @@ async def login(okapi: Okapi):
         "body": json.dumps(payload),
     }
 
+    console.log(f"Before trying to authenticate {kwargs}")
+
     login_response = await pyfetch(f"{okapi.url}/authn/login", **kwargs)
 
     login_json = await login_response.json()
@@ -69,11 +88,11 @@ async def login(okapi: Okapi):
         folio_button = document.getElementById("folioButton")
         folio_button.classList.remove("btn-outline-danger")
         folio_button.classList.add("btn-outline-success")
-        localStorage.setItem("okapi_headers", 
-                             json.dumps({ "Content-type": "application/json",
-                                          "x-okapi-token": okapi.tenant,
-                                          "x-okapi-tenant": okapi.token }))
+        localStorage.setItem("okapi", 
+                             okapi.json())
         services()
+    else:
+        console.log(f"Failed to log into Okapi {login_response}")
 
 
 async def load_marc_record(marc_file):
@@ -89,11 +108,7 @@ async def load_marc_record(marc_file):
 
 async def get_instance(okapi, uuid):
     kwargs = {
-        "headers": {
-            "Content-type": "application/json",
-            "x-okapi-token": okapi.token,
-            "x-okapi-tenant": okapi.tenant,
-        }
+        "headers": okapi.headers()
     }
 
     instance_response = await pyfetch(
@@ -106,9 +121,76 @@ async def get_instance(okapi, uuid):
     else:
         print(f"ERROR retrieving {uuid} {instance_response}")
 
-async def add(record):
-    alert(f"Record {record} added to FOLIO")
-    return "Added record with uuid of {uuid}"
+
+async def add_instance(record):
+    okapi = _get_okapi()
+    kwargs = {
+        "method": "POST",
+        "headers": okapi.headers(),
+        "mode": "cors",
+        "body": record,
+    }
+    console.log(f"Add Instance kwargs {kwargs}")
+    instance_response = await pyfetch(
+        f"{okapi.url}/instance-storage/instances", **kwargs
+    )
+    if instance_response.ok:
+        instance = await instance_response.json()
+        console.log(f"Added record with uuid of {instance['id']}")
+        return instance["id"]
+    else:
+        print(f"Error adding {instance_response}")
+        return instance_response
+
+
+async def get_types(endpoint, selected_types, type_key, name_key="name"):
+    okapi = _get_okapi()
+    kwargs = {
+        "headers": okapi.headers()
+    }
+    output = {}
+    type_response = await pyfetch(f"{okapi.url}{endpoint}", **kwargs)
+    if type_response.ok:
+        types = await type_response.json()
+        for row in types.get(type_key, []):
+            if row[name_key] in selected_types:
+                output[row[name_key]] = row["id"]
+    return output
+
+
+async def get_contributor_types() -> dict:
+    selected_types = ["Author"]
+    output = await get_types("/contributor-types?limit=500",
+                             selected_types,
+                             "contributorTypes")
+    return output
+   
+async def get_contributor_name_types() -> dict:
+    selected_types = ["Personal name", "Corporate name"]
+    output = await get_types("/contributor-name-types", 
+                             selected_types,
+                             "contributorNameTypes")
+    return output  
+    
+async def get_identifier_types() -> dict:
+    selected_types = ["DOI", "ISBN", "LCCN", "ISSN"]
+    output = await get_types("/identifier-types?limit=500", 
+                             selected_types, 
+                             "identifierTypes")
+    return output
+
+
+async def get_instance_types() -> dict:
+    selected_types = ["text", 
+                      "still image",
+                      "computer program",
+                      "computer dataset",
+                      "two-dimensional moving image",
+                      "notated music",
+                      "unspecified"]
+    output = await get_types("/instance-types?limit=500", selected_types, "instanceTypes")
+    return output
+
 
 async def load(record):
     return "Loading record to FOLIO"

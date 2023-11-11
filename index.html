@@ -35,7 +35,9 @@
 </head>
 <body>
   <py-script>
+
     import asyncio
+    import json
 
     from js import console, document, localStorage
 
@@ -44,7 +46,7 @@
 
     from controls import (
         clear_chat_prompt, 
-        load_workflow,
+        init_workflow,
         load_folio_default,
         run_prompt
     )
@@ -63,15 +65,26 @@
         chatgpt_button = document.getElementById("chatGPTButton")
         chatgpt_button.classList.remove("btn-outline-danger")
         chatgpt_button.classList.add("btn-outline-success")
-        #chat_prompts_div = document.getElementById("chat-gpt-prompts")
-        #chat_prompts_div.classList.remove("d-none")
 
 
     workflow = None
 
-    okapi = Okapi()
+
+    okapi = None
+    existing_okapi = localStorage.getItem("okapi")
+    if existing_okapi:
+        okapi = Okapi.parse_obj(json.loads(existing_okapi))
+        folio_btn = document.getElementById("folioButton")
+        folio_btn.classList.remove("btn-outline-danger")
+        folio_btn.classList.add("btn-outline-success")
+        
 
     marc_file = Element("marcFile")
+
+    async def load_workflow(workflow_slug):
+        global workflow
+        workflow = await init_workflow(workflow_slug)
+
 
     async def login_chatgpt():
         global chat_gpt_instance
@@ -81,8 +94,8 @@
         folio_iframe = document.getElementById("folio-system-frame")
         folio_url_elem = document.getElementById("folioURI")
         folio_iframe.src = folio_url_elem.value
-        folio_logged_in = await okapi_login(okapi)
-        
+        folio_logged_in = await okapi_login(Okapi())
+        console.log(f"FOLIO Login? {folio_logged_in}")
         
 
 
@@ -301,16 +314,16 @@
                   </p>
                   <ul>
                     <li>
-                      <a href="#" py-click="workflow=load_workflow('new-resource')">Catalog a New Resource by Chat</a>
+                      <a href="#" py-click="asyncio.ensure_future(load_workflow('new-resource'))">Catalog a New Resource by Chat</a>
                     </li>
                     <li>
-                      <a href="#" py-click="workflow=load_workflow('transform-bf-folio')">Transform Sinopia BIBFRAME to FOLIO Inventory</a>
+                      <a href="#" py-click="load_workflow('transform-bf-folio')">Transform Sinopia BIBFRAME to FOLIO Inventory</a>
                     </li>
                     <li>
-                      <a href="#" py-click="workflow=load_workflow('add-lcsh')">Add LCSH to Sinopia RDF or FOLIO Records</a>
+                      <a href="#" py-click="load_workflow('add-lcsh')">Add LCSH to Sinopia RDF or FOLIO Records</a>
                     </li>
                     <li>
-                      <a href="#" py-click="workflow=load_workflow('marc-to-folio')">Upload a MARC Record to create a FOLIO Inventory Record</a>
+                      <a href="#" py-click="load_workflow('marc-to-folio')">Upload a MARC Record to create a FOLIO Inventory Record</a>
                     </li>
                   </ul>
                   <div>
@@ -320,11 +333,11 @@
                       select one or more of the following vector datastores:
                     </p>
                      <div class="form-check"> 
-                      <input class="form-check-input" type="checkbox" value="" id="folio-vector-db"></input>
+                      <input class="form-check-input" type="checkbox" value="" disabled id="folio-vector-db"></input>
                       <label class="form-check-label" for="folio-vector-db">FOLIO Inventory</label>
                      </div>
                      <div class="form-check"> 
-                      <input class="form-check-input" type="checkbox" value="" id="sinopia-vector-db"></input>
+                      <input class="form-check-input" type="checkbox" value="" disabled id="sinopia-vector-db"></input>
                       <label class="form-check-label" for="sinopia-vector-db">Sinopia RDF</label>
                      </div>
                      <div class="form-check"> 
@@ -395,6 +408,14 @@
 
                  </article>
                </div>
+            </div>
+            <div class="row">
+              <div class="col">
+                <div class="container">
+                  <h2>Roadmap</h2> 
+
+                </div>
+              </div> 
             </div>
           </div>
         </div>

@@ -1,3 +1,5 @@
+import asyncio
+
 from js import console, document, alert
 
 from chat import add_history
@@ -36,7 +38,7 @@ def load_folio_default():
     
 
 
-def load_workflow(workflow_slug):
+async def init_workflow(workflow_slug):
     workflow_title_h2 = document.getElementById("workflow-title")
     chat_prompt_textarea = document.getElementById("mainChatPrompt")
     folio_vector_chkbx = document.getElementById("folio-vector-db")
@@ -59,37 +61,34 @@ def load_workflow(workflow_slug):
 
         case "add-lcsh":
             msg = "Adds Library of Congress Subject Headings to Resource"
-            console.log(msg)
             lcsh_vector_chkbox.checked = True
             workflow = "add_lcsh"
 
         case "bf-to-marc":
             msg = "Generate a MARC Record from Sinopia BIBFRAME RDF"
-            console.log(msg)
             lcsh_vector_chkbox.checked = True
-            sinopia_vector_chkbox.checked = True
+            # sinopia_vector_chkbox.checked = True
             workflow = "bf_to_marc"
 
         case "marc-to-folio":
             console.log(msg)
-            folio_vector_chkbx.checked = True
+            # folio_vector_chkbx.checked = True
             mrc_upload_btn.classList.remove("d-none")
             workflow = MARC21toFOLIO
             msg = workflow.name
 
         case "new-resource":
-            folio_vector_chkbx.checked = True
+            # folio_vector_chkbx.checked = True
             lcsh_vector_chkbox.checked = True
-            sinopia_vector_chkbox.checked = True
-            workflow = NewResource
+            # sinopia_vector_chkbox.checked = True
+            workflow = NewResource()
             msg = workflow.name
 
 
         case "transform-bf-folio":
             msg = "Transform Sinopia BIBFRAME to FOLIO Inventory"
-            console.log(msg)
-            folio_vector_chkbx.checked = True
-            sinopia_vector_chkbox.checked = True
+            # folio_vector_chkbx.checked = True
+            # sinopia_vector_chkbox.checked = True
             workflow = "transform_bf_folio"
 
         case _:
@@ -98,7 +97,8 @@ def load_workflow(workflow_slug):
 
     workflow_title_h2.innerHTML = f"<strong>Workflow:</strong> {msg}"
     if hasattr(workflow, "system"):
-        system_div.innerHTML = f"""<textarea id="system-text" class="form-control" rows=5>{workflow.system}</textarea>"""
+        system_result = await workflow.system()
+        system_div.innerHTML = f"""<textarea id="system-text" class="form-control" rows=5>{system_result}</textarea>"""
     if hasattr(workflow, "examples"):
         for i,example in enumerate(workflow.examples):
             example_div = document.createElement("div")
@@ -123,15 +123,15 @@ async def run_prompt(workflow, chat_gpt_instance):
             examples.append(check_box.nextElementSibling.value)
     console.log(f"Examples {examples}")
     workflow.examples = examples
-    workflow_run = workflow(react=True)
-    await chat_gpt_instance.set_system(workflow_run.system)
+    system = await workflow.system()
+    await chat_gpt_instance.set_system(system)
     current = main_chat_textarea.value
     if len(current) > 0:
-        console.log(f"Before calling {workflow_run.run}")
+        console.log(f"Before calling {workflow.run}")
         #add_history(current, "prompt")
         #chat_result = await chat_gpt_instance(current)
         #add_history(chat_result, "response")
-        run_result = await workflow_run.run(chat_gpt_instance, current)
+        run_result = await workflow.run(chat_gpt_instance, current)
         console.log(f"Run result {run_result}")
         main_chat_textarea.value = ""
 

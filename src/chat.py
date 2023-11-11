@@ -60,7 +60,10 @@ def _add_response_to_history(response):
     for choice in response['choices']:
         message = choice.get('message')
         html_string += f"<p>Role {message['role']}</p>"
-        html_string += f"<p>{message['content']}</p>"
+        if message.get("function_call"):
+            html_string += f"<pre>{json.dumps(message['function_call'], indent=2)}</pre>"
+        else:
+            html_string += f"<p>{message['content']}</p>"
         
     html_string += f"""</div>
       <div class="card-footer">
@@ -122,6 +125,7 @@ class ChatGPT(object):
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.messages = []
+        self.functions = None
         localStorage.setItem("chat_gpt_token", key)
 
     async def __call__(self, message):
@@ -142,24 +146,24 @@ class ChatGPT(object):
             "content": self.system
         }
         # Remove any existing system messages
-        console.log("Before removing any old messages")
         for i,message in enumerate(self.messages):
             if message['role'] == "system":
                 self.messages.pop(i)
         self.messages.insert(0, system_message)
 
     async def execute(self):
+        body = {
+            "model": self.model,
+            "messages": self.messages,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
+        }
+        if self.functions:
+            body["functions"] = self.functions
         kwargs = {
             "method": "POST",
             "headers": self.headers,
-            "body": json.dumps(
-                {
-                    "model": self.model,
-                    "messages": self.messages,
-                    "temperature": self.temperature,
-                    "max_tokens": self.max_tokens,
-                }
-            ),
+            "body": json.dumps(body),
         }
         completion = await pyfetch(self.openai_url, **kwargs)
         if completion.ok:
