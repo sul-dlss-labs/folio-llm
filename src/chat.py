@@ -51,20 +51,22 @@ def _add_prompt_to_history(text):
 
 
 def _add_response_to_history(response):
-    created_at = datetime.datetime.fromtimestamp(response['created'])
+    created_at = datetime.datetime.fromtimestamp(response["created"])
     html_string = f"""<div id="{response['id']}" class="card border-danger mb-3">
       <div class="card-header">
         Response at {created_at.isoformat()} 
       </div>
       <div class="card-body">"""
-    for choice in response['choices']:
-        message = choice.get('message')
+    for choice in response["choices"]:
+        message = choice.get("message")
         html_string += f"<p>Role {message['role']}</p>"
         if message.get("function_call"):
-            html_string += f"<pre>{json.dumps(message['function_call'], indent=2)}</pre>"
+            html_string += (
+                f"<pre>{json.dumps(message['function_call'], indent=2)}</pre>"
+            )
         else:
             html_string += f"<p>{message['content']}</p>"
-        
+
     html_string += f"""</div>
       <div class="card-footer">
         <small>ID {response['id']} Tokens: prompt: {response['usage']['prompt_tokens']} completion: {response['usage']['completion_tokens']}</small>
@@ -92,7 +94,7 @@ def add_history(value, type_of):
             result = _add_prompt_to_history(value)
         case "response":
             result = _add_response_to_history(value)
-    
+
     return result
 
 
@@ -109,12 +111,14 @@ async def login():
 
 
 class ChatGPT(object):
-    def __init__(self, 
+    def __init__(
+        self,
         key,
-        endpoint_url="https://api.openai.com/v1/chat/completions", 
+        endpoint_url="https://api.openai.com/v1/chat/completions",
         model="gpt-3.5-turbo",
-        temperature=0.9, 
-        max_tokens=250):
+        temperature=0.9,
+        max_tokens=1050,
+    ):
         self.headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {key}",
@@ -129,10 +133,7 @@ class ChatGPT(object):
         localStorage.setItem("chat_gpt_token", key)
 
     async def __call__(self, message):
-        message = {
-            "role": "user",
-            "content": message
-        }
+        message = {"role": "user", "content": message}
         self.messages.append(message)
         result = await self.execute()
         console.log(f"Adding {result} to messages")
@@ -141,13 +142,10 @@ class ChatGPT(object):
 
     async def set_system(self, system):
         self.system = system
-        system_message = {
-            "role": "system",
-            "content": self.system
-        }
+        system_message = {"role": "system", "content": self.system}
         # Remove any existing system messages
-        for i,message in enumerate(self.messages):
-            if message['role'] == "system":
+        for i, message in enumerate(self.messages):
+            if message["role"] == "system":
                 self.messages.pop(i)
         self.messages.insert(0, system_message)
 
@@ -188,7 +186,11 @@ async def react_loop(**kwargs):
         console.log(f"Loop {i} {next_prompt}")
         result = await bot(next_prompt)
         add_history(result, "response")
-        actions = [action_re.match(a) for a in result["choices"][0]["message"]["content"].split("\n") if action_re.match(a)]
+        actions = [
+            action_re.match(a)
+            for a in result["choices"][0]["message"]["content"].split("\n")
+            if action_re.match(a)
+        ]
         console.log(f"Actions Regex {actions}")
         if actions:
             action, action_input = actions[0].groups()
@@ -200,7 +202,7 @@ async def react_loop(**kwargs):
             add_history(next_prompt, "prompt")
         else:
             return
-        
+
 
 def update_chat_modal(chat_gpt_instance):
     modal_body = document.getElementById("chatApiKeyModalBody")

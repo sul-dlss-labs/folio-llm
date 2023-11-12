@@ -1,4 +1,7 @@
 import asyncio
+import io
+
+import pymarc
 
 from js import console, document, alert
 
@@ -13,6 +16,8 @@ def clear_chat_prompt(chat_gpt_instance):
     workflow_title = document.getElementById("workflow-title")
     workflow_title.innerHTML = ""
     main_chat_textarea.value = ""
+    mrc_upload_btn = document.getElementById("marc-upload-btn")
+    mrc_upload_btn.classList.add("d-none")
     if chat_gpt_instance != None:
         chat_gpt_instance.messages = []
     _clear_vector_db()
@@ -35,7 +40,6 @@ def load_folio_default():
     password.value = "admin"
 
     folio_default.classList.add("d-none")
-    
 
 
 async def init_workflow(workflow_slug):
@@ -46,19 +50,20 @@ async def init_workflow(workflow_slug):
     lcsh_vector_chkbox = document.getElementById("lcsh-vector-db")
     examples_div = document.getElementById("prompt-examples")
     system_card = document.getElementById("system-card")
-        
+
     system_div = document.getElementById("system-message")
 
     system_div.innerHTML = ""
     examples_div.innerHTML = ""
     system_card.classList.remove("d-none")
-        # chat_prompt_textarea.value = prompt_base
+    # chat_prompt_textarea.value = prompt_base
     _clear_vector_db()
+    console.log("Before setting mrc_upload_btn")
     mrc_upload_btn = document.getElementById("marc-upload-btn")
     mrc_upload_btn.classList.add("d-none")
 
-    match workflow_slug:
 
+    match workflow_slug:
         case "add-lcsh":
             msg = "Adds Library of Congress Subject Headings to Resource"
             lcsh_vector_chkbox.checked = True
@@ -71,11 +76,11 @@ async def init_workflow(workflow_slug):
             workflow = "bf_to_marc"
 
         case "marc-to-folio":
-            console.log(msg)
-            # folio_vector_chkbx.checked = True
+            console.log("In marc-to-folio")
             mrc_upload_btn.classList.remove("d-none")
-            workflow = MARC21toFOLIO
+            workflow = MARC21toFOLIO(zero_shot=True)
             msg = workflow.name
+            console.log(msg)
 
         case "new-resource":
             # folio_vector_chkbx.checked = True
@@ -83,7 +88,6 @@ async def init_workflow(workflow_slug):
             # sinopia_vector_chkbox.checked = True
             workflow = NewResource()
             msg = workflow.name
-
 
         case "transform-bf-folio":
             msg = "Transform Sinopia BIBFRAME to FOLIO Inventory"
@@ -100,7 +104,7 @@ async def init_workflow(workflow_slug):
         system_result = await workflow.system()
         system_div.innerHTML = f"""<textarea id="system-text" class="form-control" rows=5>{system_result}</textarea>"""
     if hasattr(workflow, "examples"):
-        for i,example in enumerate(workflow.examples):
+        for i, example in enumerate(workflow.examples):
             example_div = document.createElement("div")
             example_div.classList.add("form-check")
             example_div.innerHTML = f"""<input class="form-check-input" type="checkbox" value="" id="workflow-example-chkbox-{i}" checked></input>
@@ -108,6 +112,17 @@ async def init_workflow(workflow_slug):
                                <textarea id="workflow-example-{i}" class="form-control" rows=3>{example}</textarea>"""
             examples_div.append(example_div)
     return workflow
+
+
+async def load_marc_record(marc_file):
+    if marc_file.element.files.length > 0:
+        marc_file_item = marc_file.element.files.item(0)
+        marc_binary = await marc_file_item.text()
+        marc_reader = pymarc.MARCReader(
+            io.BytesIO(bytes(marc_binary, encoding="utf-8"))
+        )
+        marc_record = next(marc_reader)
+        return str(marc_record)
 
 
 async def run_prompt(workflow, chat_gpt_instance):
@@ -122,18 +137,18 @@ async def run_prompt(workflow, chat_gpt_instance):
         if check_box.checked:
             examples.append(check_box.nextElementSibling.value)
     console.log(f"Examples {examples}")
-    workflow.examples = examples
+    if len(examples) > 0:
+        workflow.zero_shot = False
+        workflow.examples = examples
+  
     system = await workflow.system()
     await chat_gpt_instance.set_system(system)
     current = main_chat_textarea.value
     if len(current) > 0:
-        console.log(f"Before calling {workflow.run}")
-        #add_history(current, "prompt")
-        #chat_result = await chat_gpt_instance(current)
-        #add_history(chat_result, "response")
         run_result = await workflow.run(chat_gpt_instance, current)
         console.log(f"Run result {run_result}")
         main_chat_textarea.value = ""
+
 
 def _clear_vector_db():
     folio_vector_chkbx = document.getElementById("folio-vector-db")
@@ -141,5 +156,3 @@ def _clear_vector_db():
     lcsh_vector_chkbox = document.getElementById("lcsh-vector-db")
     for checkbox in [folio_vector_chkbx, sinopia_vector_chkbox, lcsh_vector_chkbox]:
         checkbox.checked = False
-
-

@@ -1,3 +1,4 @@
+import asyncio
 import io
 import json
 
@@ -46,7 +47,7 @@ def services():
 
 # Goal 1: Automate loading of vendor MARC records
 # Goal 2: Generate Order records from brief MARC records
-# Goal 3: Create Course reserves from a csv containing a faculty id, course name, course code, start date, end date, item barcode 
+# Goal 3: Create Course reserves from a csv containing a faculty id, course name, course code, start date, end date, item barcode
 # Goal 4: Assist staff by generating a quick add instance, holdings, and item from barcode not in FOLIO
 # Goal 5: Given a title, find all items with it's circulation status, and reserve the nearest available item
 
@@ -54,10 +55,9 @@ def services():
 async def login(okapi: Okapi):
     okapi_url = document.getElementById("okapiURI")
     tenant = document.getElementById("folioTenant")
-    
+
     user = document.getElementById("folioUser")
     password = document.getElementById("folioPassword")
-
 
     okapi.url = okapi_url.value
     okapi.tenant = tenant.value
@@ -83,13 +83,11 @@ async def login(okapi: Okapi):
 
     okapi.token = login_json["okapiToken"]
 
-
     if login_response.ok:
         folio_button = document.getElementById("folioButton")
         folio_button.classList.remove("btn-outline-danger")
         folio_button.classList.add("btn-outline-success")
-        localStorage.setItem("okapi", 
-                             okapi.json())
+        localStorage.setItem("okapi", okapi.json())
         services()
     else:
         console.log(f"Failed to log into Okapi {login_response}")
@@ -107,9 +105,7 @@ async def load_marc_record(marc_file):
 
 
 async def get_instance(okapi, uuid):
-    kwargs = {
-        "headers": okapi.headers()
-    }
+    kwargs = {"headers": okapi.headers()}
 
     instance_response = await pyfetch(
         f"{okapi.url}/instance-storage/instances/{uuid}", **kwargs
@@ -145,9 +141,7 @@ async def add_instance(record):
 
 async def get_types(endpoint, selected_types, type_key, name_key="name"):
     okapi = _get_okapi()
-    kwargs = {
-        "headers": okapi.headers()
-    }
+    kwargs = {"headers": okapi.headers()}
     output = {}
     type_response = await pyfetch(f"{okapi.url}{endpoint}", **kwargs)
     if type_response.ok:
@@ -160,35 +154,41 @@ async def get_types(endpoint, selected_types, type_key, name_key="name"):
 
 async def get_contributor_types() -> dict:
     selected_types = ["Author"]
-    output = await get_types("/contributor-types?limit=500",
-                             selected_types,
-                             "contributorTypes")
+    output = await get_types(
+        "/contributor-types?limit=500", selected_types, "contributorTypes"
+    )
     return output
-   
+
+
 async def get_contributor_name_types() -> dict:
     selected_types = ["Personal name", "Corporate name"]
-    output = await get_types("/contributor-name-types", 
-                             selected_types,
-                             "contributorNameTypes")
-    return output  
-    
+    output = await get_types(
+        "/contributor-name-types", selected_types, "contributorNameTypes"
+    )
+    return output
+
+
 async def get_identifier_types() -> dict:
     selected_types = ["DOI", "ISBN", "LCCN", "ISSN"]
-    output = await get_types("/identifier-types?limit=500", 
-                             selected_types, 
-                             "identifierTypes")
+    output = await get_types(
+        "/identifier-types?limit=500", selected_types, "identifierTypes"
+    )
     return output
 
 
 async def get_instance_types() -> dict:
-    selected_types = ["text", 
-                      "still image",
-                      "computer program",
-                      "computer dataset",
-                      "two-dimensional moving image",
-                      "notated music",
-                      "unspecified"]
-    output = await get_types("/instance-types?limit=500", selected_types, "instanceTypes")
+    selected_types = [
+        "text",
+        "still image",
+        "computer program",
+        "computer dataset",
+        "two-dimensional moving image",
+        "notated music",
+        "unspecified",
+    ]
+    output = await get_types(
+        "/instance-types?limit=500", selected_types, "instanceTypes"
+    )
     return output
 
 
