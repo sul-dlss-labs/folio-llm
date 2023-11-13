@@ -136,7 +136,7 @@ class ChatGPT(object):
         message = {"role": "user", "content": message}
         self.messages.append(message)
         result = await self.execute()
-        console.log(f"Adding {result} to messages")
+        #console.log(f"Adding {result} to messages")
         self.messages.append(result["choices"][0]["message"])
         return result
 
@@ -169,39 +169,6 @@ class ChatGPT(object):
         else:
             result = {"error": completion.status, "message": completion.status_text}
         return result
-
-
-async def react_loop(**kwargs):
-    console.log("In react Loop")
-    workflow_actions = kwargs.get("actions", {})
-    max_turns = kwargs.get("max_turns", 5)
-    next_prompt = kwargs.get("question")
-    bot = kwargs.get("chat_instance")
-    if next_prompt is None:
-        raise ValueError("Question cannot be None")
-    i = 0
-    console.log(f"Before while loop i={i} max-turns = {max_turns}")
-    while i < max_turns:
-        i += 1
-        console.log(f"Loop {i} {next_prompt}")
-        result = await bot(next_prompt)
-        add_history(result, "response")
-        actions = [
-            action_re.match(a)
-            for a in result["choices"][0]["message"]["content"].split("\n")
-            if action_re.match(a)
-        ]
-        console.log(f"Actions Regex {actions}")
-        if actions:
-            action, action_input = actions[0].groups()
-            if action not in workflow_actions:
-                raise Exception(f"Unknown action: {action} with input {action_input}")
-            add_history(f"Running {action} on {action_input}", "prompt")
-            observation = workflow_actions[action](action_input)
-            next_prompt = f"Observation: {observation}"
-            add_history(next_prompt, "prompt")
-        else:
-            return
 
 
 def update_chat_modal(chat_gpt_instance):

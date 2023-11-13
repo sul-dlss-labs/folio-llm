@@ -6,7 +6,7 @@ import pymarc
 from js import console, document, alert
 
 from chat import add_history
-from workflows import NewResource, MARC21toFOLIO
+from workflows import NewResource, MARC21toFOLIO, SinopiaToFOLIO
 
 
 def clear_chat_prompt(chat_gpt_instance):
@@ -20,6 +20,8 @@ def clear_chat_prompt(chat_gpt_instance):
     mrc_upload_btn.classList.add("d-none")
     if chat_gpt_instance != None:
         chat_gpt_instance.messages = []
+    loading_spinner = document.getElementById("chat-loading")
+    loading_spinner.classList.add("d-none")
     _clear_vector_db()
     return None
 
@@ -50,6 +52,8 @@ async def init_workflow(workflow_slug):
     lcsh_vector_chkbox = document.getElementById("lcsh-vector-db")
     examples_div = document.getElementById("prompt-examples")
     system_card = document.getElementById("system-card")
+    loading_spinner = document.getElementById("chat-loading")
+    loading_spinner.classList.add("d-none")
 
     system_div = document.getElementById("system-message")
 
@@ -65,9 +69,9 @@ async def init_workflow(workflow_slug):
 
     match workflow_slug:
         case "add-lcsh":
-            msg = "Adds Library of Congress Subject Headings to Resource"
             lcsh_vector_chkbox.checked = True
-            workflow = "add_lcsh"
+            workflow = AssignLCSH(zero_shot=True)
+            msg = workflow.name
 
         case "bf-to-marc":
             msg = "Generate a MARC Record from Sinopia BIBFRAME RDF"
@@ -80,20 +84,19 @@ async def init_workflow(workflow_slug):
             mrc_upload_btn.classList.remove("d-none")
             workflow = MARC21toFOLIO(zero_shot=True)
             msg = workflow.name
-            console.log(msg)
 
         case "new-resource":
             # folio_vector_chkbx.checked = True
             lcsh_vector_chkbox.checked = True
             # sinopia_vector_chkbox.checked = True
-            workflow = NewResource()
+            workflow = NewResource(zero_shot=True)
             msg = workflow.name
 
         case "transform-bf-folio":
-            msg = "Transform Sinopia BIBFRAME to FOLIO Inventory"
             # folio_vector_chkbx.checked = True
             # sinopia_vector_chkbox.checked = True
-            workflow = "transform_bf_folio"
+            workflow = SinopiaToFOLIO(zero_shot=True)
+            msg = workflow.name
 
         case _:
             msg = "None selected"
@@ -125,18 +128,33 @@ async def load_marc_record(marc_file):
         return str(marc_record)
 
 
+def new_example():
+    examples_div = document.getElementById("prompt-examples")
+    count = examples_div.children.length + 1
+    new_example_div = document.createElement("div")
+    new_example_div.classList.add("form-check")
+    new_example_div.innerHTML = f"""<input class="form-check-input" type="checkbox" value="" id="workflow-example-chkbox-{count}" checked></input>
+                             
+                               <textarea id="workflow-example-{count}" class="form-control" rows=3></textarea>"""
+    examples_div.appendChild(new_example_div)
+
+
+
 async def run_prompt(workflow, chat_gpt_instance):
     main_chat_textarea = document.getElementById("mainChatPrompt")
+    loading_spinner = document.getElementById("chat-loading")
+    loading_spinner.classList.remove("d-none")
+
     console.log(f"Workflow is {workflow}")
     if workflow is None:
         alert("Workflow is None")
+        
         return
     prompt_examples_div = document.getElementById("prompt-examples")
     examples = []
     for check_box in prompt_examples_div.getElementsByTagName("input"):
         if check_box.checked:
             examples.append(check_box.nextElementSibling.value)
-    console.log(f"Examples {examples}")
     if len(examples) > 0:
         workflow.zero_shot = False
         workflow.examples = examples
@@ -146,7 +164,9 @@ async def run_prompt(workflow, chat_gpt_instance):
     current = main_chat_textarea.value
     if len(current) > 0:
         run_result = await workflow.run(chat_gpt_instance, current)
-        console.log(f"Run result {run_result}")
+        loading_spinner.classList.add("d-none")
+
+        # console.log(f"Run result {run_result}")
         main_chat_textarea.value = ""
 
 

@@ -10,8 +10,10 @@ from pyodide.http import pyfetch
 
 from js import console, document, Headers, localStorage, alert
 
+from chat import add_history
 
 class Okapi(BaseModel):
+    folio: str = ""
     url: str = ""
     tenant: str = ""
     token: str = ""
@@ -56,13 +58,13 @@ async def login(okapi: Okapi):
     okapi_url = document.getElementById("okapiURI")
     tenant = document.getElementById("folioTenant")
 
+    folio_url = document.getElementById("folioURI")
     user = document.getElementById("folioUser")
     password = document.getElementById("folioPassword")
 
     okapi.url = okapi_url.value
     okapi.tenant = tenant.value
-
-    console.log("Before setting headers or payload")
+    okapi.folio = folio_url.value
 
     headers = {"Content-type": "application/json", "x-okapi-tenant": okapi.tenant}
 
@@ -74,8 +76,6 @@ async def login(okapi: Okapi):
         "mode": "cors",
         "body": json.dumps(payload),
     }
-
-    console.log(f"Before trying to authenticate {kwargs}")
 
     login_response = await pyfetch(f"{okapi.url}/authn/login", **kwargs)
 
@@ -126,16 +126,18 @@ async def add_instance(record):
         "mode": "cors",
         "body": record,
     }
-    console.log(f"Add Instance kwargs {kwargs}")
+    #console.log(f"Add Instance kwargs {kwargs}")
     instance_response = await pyfetch(
         f"{okapi.url}/instance-storage/instances", **kwargs
     )
     if instance_response.ok:
         instance = await instance_response.json()
         console.log(f"Added record with uuid of {instance['id']}")
-        return instance["id"]
+        return f"""{okapi.folio}/inventory/view/{instance["id"]}"""
     else:
-        print(f"Error adding {instance_response}")
+        console.log(f"Error adding {instance_response}")
+        errors = await instance_response.json()
+        add_history(f"<pre>{errors}</pre>", "prompt")
         return instance_response
 
 
@@ -169,7 +171,7 @@ async def get_contributor_name_types() -> dict:
 
 
 async def get_identifier_types() -> dict:
-    selected_types = ["DOI", "ISBN", "LCCN", "ISSN"]
+    selected_types = ["DOI", "ISBN", "LCCN", "ISSN", "OCLC", "Local identifier"]
     output = await get_types(
         "/identifier-types?limit=500", selected_types, "identifierTypes"
     )
@@ -191,6 +193,6 @@ async def get_instance_types() -> dict:
     )
     return output
 
-
-async def load(record):
-    return "Loading record to FOLIO"
+def load_instance(url):
+    folio_iframe = document.getElementById("folio-system-frame")
+    folio_iframe.src = url    

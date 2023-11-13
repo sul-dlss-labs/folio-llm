@@ -22,6 +22,8 @@
     textarea {
       font-family: Lucida, monospace;
     }
+
+   
   </style>
  <py-config type="toml">
   packages = ["pydantic", "./wheels/pymarc-4.2.2-py3-none-any.whl"]
@@ -35,6 +37,7 @@
 </head>
 <body>
   <py-script>
+    __version__ = "0.0.1"
 
     import asyncio
     import json
@@ -48,7 +51,8 @@
         clear_chat_prompt, 
         init_workflow,
         load_folio_default,
-        load_marc_record, 
+        load_marc_record,
+        new_example,
         run_prompt
     )
 
@@ -57,6 +61,9 @@
 
     from workflows import MARC21toFOLIO, NewResource
     
+
+    version_span = document.getElementById("version")
+    version_span.innerHTML = __version__
 
     chat_gpt_instance = None
     existing_token = localStorage.getItem("chat_gpt_token")
@@ -260,6 +267,9 @@
                      <h5 class="card-title">Additional Context</h5>
                      <p class="card-text">For few-shot prompts, provides examples of question and 
                       responses. De-select all examples for a zero-shot prompt.</p>
+                     <div class="text-center">
+                       <button class="btn btn-secondary m-b-1" py-click="new_example()">New Example</button>
+                     </div>
                       <div id="prompt-examples"></div>
                     </div>
                   </article>
@@ -307,10 +317,10 @@
                       <a href="#" py-click="asyncio.ensure_future(load_workflow('new-resource'))">Catalog a New Resource by Chat</a>
                     </li>
                     <li>
-                      <a href="#" py-click="load_workflow('transform-bf-folio')">Transform Sinopia BIBFRAME to FOLIO Inventory</a>
+                      <a href="#" py-click="asyncio.ensure_future(load_workflow('transform-bf-folio'))">Transform Sinopia BIBFRAME to FOLIO Inventory</a>
                     </li>
                     <li>
-                      <a href="#" py-click="load_workflow('add-lcsh')">Add LCSH to Sinopia RDF or FOLIO Records</a>
+                      <a href="#" py-click="asyncio.ensure_future(load_workflow('add-lcsh'))">Add LCSH to Sinopia RDF or FOLIO Records</a>
                     </li>
                     <li>
                       <a href="#" py-click="asyncio.ensure_future(load_workflow('marc-to-folio'))">Upload a MARC Record to create a FOLIO Inventory Record</a>
@@ -337,6 +347,11 @@
                   </div>
                 </div>
 	      </div>
+              <div class="text-center d-none" id="chat-loading">
+                <div class="spinner-border" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+              </div>
               <article>
                 <h3>Chat History</h3>
                 <div id="chat-history">
@@ -385,11 +400,18 @@
                </div>
                <div class="col">
                  <h2>Documentation</h2>
-                 <article id="react-llm">
+                 <article id="openai-api">
                    <header>
-                     <h3>ReAct Pattern</h3>
+                     <h3>OpenAI API</h3>
                    </header>
-
+                   <section>
+                     <p>
+                       This application uses the ChatGPT 
+                       <a href="https://platform.openai.com/docs/guides/text-generation/chat-completions-api">chat completion</a> API 
+                       using the `functions` parameter to emulate the ReAct pattern for calling functions that in turn, call 
+                       <a href="https://folio.org/">FOLIO</a>'s <a href="https://github.com/folio-org/okapi/">Okapi</a> APIs. 
+                     </p>
+                   </section>
                  </article>
                  <article>
                    <header>
@@ -604,10 +626,11 @@
   </div>
      
   </div>
-  <footer class="m-2">
-   An experimental Chat application by AI4LAM Metadata Working Group and Stanford University Libraries. &copy;2023. All
+  <footer class="m-3 p-2 bg-danger bg-opacity-10 border border-danger">
+   <p>An experimental Chat application by AI4LAM Metadata Working Group and Stanford University Libraries.</p>
+   <p>Version <span id="version"></span> &copy;2023. All
    source code licensed under the Apache 2, code repository at 
-   <a href="https://github.com/sul-dlss-labs/folio-llm">https://github.com/sul-dlss-labs/folio-llm</a>.
+   <a href="https://github.com/sul-dlss-labs/folio-llm">https://github.com/sul-dlss-labs/folio-llm</a>.</p>
 
   </footer>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" 
